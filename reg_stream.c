@@ -37,5 +37,7 @@ inline unsigned char stream_next(struct reg_stream* p){
   return p->buff[(p->pos)++];
 }
 
-
+inline size_t stream_pos(struct reg_stream* p){
+  return p->pos;
+}
 
