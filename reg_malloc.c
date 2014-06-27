@@ -41,8 +41,9 @@ void reg_error(const char* format, ...){
 
   va_start(args, format);
   vsnprintf(buf, sizeof(buf)-1, format, args);
+  printf("%s", buf);
   va_end(args);
-  
+
   _error();
 }
 

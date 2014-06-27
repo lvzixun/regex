@@ -13,7 +13,14 @@
 #define next_char(p)        stream_next(_stream(p))
 #define cur_pos(p)          stream_pos(_stream(p))
 
-#define expect_char(p, c)   do{ if(next_char(p) != (c)) reg_error("expect char: %c at pos: %d\n", (c), cur_pos(p)); }while(0)   
+#define expect_char(p, c)   do{ \
+                                int pos = cur_pos(p); \
+                                if(next_char(p) != (c)) \
+                                  reg_error("expect char: %c at pos: %d\n", (c), pos); \
+                            }while(0)   
+#define unexpect_char(p)    do{ \
+                                reg_error("unexpect char: %c at pos: %d\n", at_char(p), cur_pos(p)); \
+                            }while(0)
 
 struct reg_parse {
   struct reg_stream* stream;
@@ -49,7 +56,10 @@ void parse_free(struct reg_parse* p){
 
 struct reg_ast_node* parse_exec(struct reg_parse* p, const unsigned char* str, size_t size){
   p->stream = stream_new(str, size);
-  return _parse_exp(p);
+  struct reg_ast_node* ret =  _parse_exp(p);
+  if(!is_end(p)) unexpect_char(p);
+
+  return ret;
 }
 
 
@@ -94,7 +104,7 @@ static inline struct reg_ast_node* _gen_node(struct reg_parse* p, enum reg_op op
 static struct reg_ast_node* _parse_exp(struct reg_parse* p){
   struct reg_ast_node* root = _parse_term(p);
 
-  for(; !is_end(p); next_char(p)){
+  for(; !is_end(p); ){
     unsigned char cur_char = at_char(p);
     switch(cur_char){
       case '|':{
@@ -107,8 +117,7 @@ static struct reg_ast_node* _parse_exp(struct reg_parse* p){
         root = tmp;
         }break;
       default:
-        assert(0);
-        break;
+        return root;
     }
   }
 
@@ -117,13 +126,15 @@ static struct reg_ast_node* _parse_exp(struct reg_parse* p){
 
 // parse and 
 static struct reg_ast_node* _parse_term(struct reg_parse* p){
-  struct reg_ast_node* root = _gen_node(p, op_and);
-  root->childs[0] = _parse_repeated(p);
+  struct reg_ast_node* root = _parse_repeated(p);
 
-  for(; !is_end(p); next_char(p)){
-    root->childs[1] = _parse_repeated(p);
+  for(; root && !is_end(p); ){
+    struct reg_ast_node* right = _parse_repeated(p);
+    if(!right) return root;
+
     struct reg_ast_node* tmp = _gen_node(p, op_and);
     tmp->childs[0] = root;
+    tmp->childs[1] = right;
     root = tmp;
   }
 
@@ -134,6 +145,7 @@ static struct reg_ast_node* _parse_term(struct reg_parse* p){
 static struct reg_ast_node* _parse_repeated(struct reg_parse* p){
   struct reg_ast_node* root = _parse_factor(p);
   unsigned char cur_char = at_char(p);
+
   if(cur_char == '*'){
     struct reg_ast_node* tmp = _gen_node(p, op_rp);
     tmp->childs[0] = root;
@@ -163,6 +175,11 @@ static struct reg_ast_node* _parse_factor(struct reg_parse* p){
       ret = _parse_exp(p);
       expect_char(p, ')');
       break;
+
+    case ']':
+    case ')':
+    case '|':
+      return NULL;
     default:
       ret = _gen_node(p, op_range, (int)cur_char, (int)cur_char);
       next_char(p);
@@ -186,7 +203,7 @@ void parse_dump(struct reg_ast_node* root){
   if(!root) return;
 
   if(root->op == op_range)
-    printf("[addr: %p] type: %s  value:[%d - %d] childs[%p, %p] \n", root, op_map[root->op], 
+    printf("[addr: %p] type: %s  value:[%c - %c] childs[%p, %p] \n", root, op_map[root->op], 
       root->value.range.begin, root->value.range.end,
       root->childs[0], root->childs[1]);
   else
