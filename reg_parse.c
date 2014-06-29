@@ -199,7 +199,8 @@ static char* op_map[] = {
   "op_range"
 };
 
-void parse_dump(struct reg_ast_node* root){
+
+static void _parse_dump(struct reg_ast_node* root){
   if(!root) return;
 
   if(root->op == op_range)
@@ -211,7 +212,12 @@ void parse_dump(struct reg_ast_node* root){
       op_map[root->op],
       root->childs[0], root->childs[1]);
 
-  parse_dump(root->childs[0]);
-  parse_dump(root->childs[1]);
+  _parse_dump(root->childs[0]);
+  _parse_dump(root->childs[1]);
+}
+
+void parse_dump(struct reg_ast_node* root){
+  printf("-------- parse_dump ----------\n");
+  _parse_dump(root);  
 }
 

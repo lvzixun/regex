@@ -13,10 +13,10 @@ ifeq ($(UNAME_S), Linux)
 	REGEX_SHARE_LIB = libregex.so
 endif
 
-REGEX_LIB = reg_malloc.c reg_parse.c reg_stream.c
+REGEX_LIB = reg_malloc.c reg_parse.c reg_stream.c reg_list.c reg_state.c
 
 
-_TEST_CAST = test_parse.c
+_TEST_CAST = test_parse.c test_edge.c
 TEST_CAST = $(addprefix test/, $(_TEST_CAST))
 
 REGEX_LIB_OBJ = $(foreach s, $(REGEX_LIB), $(basename $(s)).o)
@@ -38,3 +38,4 @@ clean:
 	rm -rf $(REGEX_LIB_OBJ)
 	rm -rf $(TEST_CAST_OUT)
 	rm -rf $(REGEX_SHARE_LIB)
+

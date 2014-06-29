@@ -23,42 +23,43 @@ struct _range_frame {
     e_end
   }type;
 
-  int value[2];
+  int value[2];  // save begin value and end value
+};
+
+//  the posation is index add 1
+struct _reg_path {
+  size_t edge_pos;      // the posation of edges_list
+  size_t next_node_pos; // the posation of state_list
 };
 
 //  state node
 struct reg_node {
-  int node_idx;
+  int node_idx;           // the index of state_list  
 
-  struct reg_list* edges;
+  struct reg_list* edges; // the struct reg_path object list
 };
 
-struct reg_state{
-  struct reg_list* state_list;
-  struct reg_list* edges_list;
 
-  struct reg_list* frame_list;
+struct reg_state{
+
+  struct reg_list* frame_list; // the struct _reg_frame object list
+};
+
+struct reg_filter{
+  struct reg_state* state;
+
+  struct reg_list* state_list; // the struct reg_node object list
+  struct reg_list* edges_list; // the struct reg_edge object list
 };
 
 static void _gen_frame(struct reg_state* p, struct reg_ast_node* root);
-static void _gen_edge(struct reg_state* p);
-static void _gen_nfa(struct reg_state* p);
-static void _gen_dfa(struct reg_state* p);
+static void _gen_edge(struct reg_filter* filter);
+static void _gen_nfa(struct reg_filter* filter);
+static void _gen_dfa(struct reg_filter* filter);
 
 
 struct reg_state* state_new(){
   struct reg_state* ret = malloc(sizeof(struct reg_state));
-
-  // init status nodes
-  ret->state_list = list_new(sizeof(struct reg_node), DEF_NODES);
-  struct reg_node* node = NULL;
-  for(int i=0; (node = list_idx(ret->state_list, i)) != NULL; i++){
-    node->edges = list_new(sizeof(int), DEF_EDGE);
-    node->node_idx = i;
-  }
-  
-  //init edges
-  ret->edges_list = list_new(sizeof(struct reg_edge), DEF_EDGES);
 
   // init frame
   ret->frame_list = list_new(sizeof(struct _range_frame), DEF_FRAMES);
@@ -66,16 +67,6 @@ struct reg_state* state_new(){
 }
 
 void state_free(struct reg_state* p){
-  struct reg_node* node = NULL;
-  // free state
-  for(int i=0; (node = list_idx(p->state_list, i)) != NULL; i++){
-    list_free(node->edges);
-  }
-  list_free(p->state_list);
-
-  // free edges
-  list_free(p->edges_list);
-
   // free frame
   list_free(p->frame_list);
 
@@ -86,23 +77,58 @@ void state_clear(struct reg_state* p){
 
 }
 
+static inline struct reg_filter* _new_filter(struct reg_state* state){
+  struct reg_filter* ret = malloc(sizeof(struct reg_filter));
+  ret->state = state;
+  ret->edges_list = list_new(sizeof(struct reg_edge), DEF_EDGES);
+
+  ret->state_list = list_new(sizeof(struct reg_node), DEF_NODES);
+  struct reg_node* node = NULL;
+  for(int i=0; (node = list_idx(ret->state_list, i)) != NULL; i++){
+    node->edges = list_new(sizeof(struct _reg_path), DEF_EDGE);
+    node->node_idx = i;
+  }
+
+  return ret;
+}
+
+
 static inline int _campar(const struct _range_frame* a, const struct _range_frame* b){
   return a->value[0] - b->value[0];
 }
 
+struct reg_filter* state_new_filter(struct reg_state* p, struct reg_ast_node* ast){
+  struct reg_filter* filter = _new_filter(p);
 
-void state_gen(struct reg_state* p, struct reg_ast_node* ast){
+  // prepare frame list
   list_clear(p->frame_list);
   _gen_frame(p, ast);
   list_sort(p->frame_list, (campar)_campar);
 
-  list_clear(p->edges_list);
-  _gen_edge(p);
+  // prepare edge list
+  list_clear(filter->edges_list);
+  _gen_edge(filter);
 
-  list_clear(p->state_list);
-  _gen_nfa(p);
-  _gen_dfa(p);
+  // prepare state map
+  list_clear(filter->state_list);
+  _gen_nfa(filter);
+  _gen_dfa(filter);
+  return filter;
 }
+
+void state_free_filter(struct reg_filter* filter){
+  struct reg_node* node = NULL;
+  // free state
+  for(int i=0; (node = list_idx(filter->state_list, i)) != NULL; i++){
+    list_free(node->edges);
+  }
+  list_free(filter->state_list);
+
+  // free edges
+  list_free(filter->edges_list);
+  free(filter);
+}
+
 
 static void _gen_frame(struct reg_state* p, struct reg_ast_node* root){
   if(!root) return;
@@ -132,13 +158,13 @@ static void _gen_frame(struct reg_state* p, struct reg_ast_node* root){
   _gen_frame(p, root->childs[1]);
 }
 
-static inline void _insert_edge(struct reg_state* p, int begin, int end){
+static inline void _insert_edge(struct reg_filter* filter, int begin, int end){
   struct reg_edge value = {
     .range.begin = begin,
     .range.end = end,
   };
 
-  list_add(p->edges_list, &value);
+  list_add(filter->edges_list, &value);
 }
 
 static inline int _need_insert(struct reg_state* p, size_t idx){
@@ -158,12 +184,12 @@ static inline int _need_insert(struct reg_state* p, size_t idx){
   return 0;
 }
 
-static inline int _read_frame(struct reg_state* p, size_t idx, 
+static inline int _read_frame(struct reg_filter* filter, size_t idx, 
   int* out_range_right, int* out_next_begin){
   
   int count = 0;
   assert(out_range_right);
-  int value = frame_idx(p, idx)->value[0];
+  int value = frame_idx(filter->state, idx)->value[0];
   
   int is_insert = 0;
   int is_begin = 0, is_end = 0;
@@ -172,7 +198,7 @@ static inline int _read_frame(struct reg_state* p, size_t idx,
 
   struct _range_frame* v = NULL;
   for(;  
-      v = frame_idx(p, idx), v && value == v->value[0]; 
+      v = frame_idx(filter->state, idx), v && value == v->value[0]; 
       idx++, count++){  
 
     // record end node 
@@ -190,7 +216,7 @@ static inline int _read_frame(struct reg_state* p, size_t idx,
     // single range
     if((v->value[0] == v->value[1] || (is_begin && is_end)) && !is_insert){
       (*out_next_begin)++;
-      _insert_edge(p, v->value[0], v->value[0]);
+      _insert_edge(filter, v->value[0], v->value[0]);
       is_insert = 1;
     }
   }
@@ -198,45 +224,45 @@ static inline int _read_frame(struct reg_state* p, size_t idx,
   return count;
 }
 
-static void _gen_edge(struct reg_state* p){
+static void _gen_edge(struct reg_filter* filter){
   int range_right = 0;
   int head = 0;
-  size_t i = _read_frame(p, 0, &range_right, &head);
+  size_t i = _read_frame(filter, 0, &range_right, &head);
 
   struct _range_frame* frame = NULL;
-  for(; (frame = list_idx(p->frame_list, i)); ){
+  for(; (frame = list_idx(filter->state->frame_list, i)); ){
     int tail = frame->value[0];
-    if(_need_insert(p, i) || frame->type == e_begin){
+    if(_need_insert(filter->state, i) || frame->type == e_begin){
       tail -= 1;
     }
     if(head <= tail && tail <= range_right){
-      _insert_edge(p, head, tail);
+      _insert_edge(filter, head, tail);
     }
 
-    int count = _read_frame(p, i, &range_right, &head);
+    int count = _read_frame(filter, i, &range_right, &head);
     if(head == tail) head++;
     i += count;
   }
 }
 
-static void _gen_nfa(struct reg_state* p){
+static void _gen_nfa(struct reg_filter* filter){
 
 }
 
-static void _gen_dfa(struct reg_state* p){
+static void _gen_dfa(struct reg_filter* filter){
 
 }
 
 
 
 // for test
-void dump_edge(struct reg_state* p){
+void dump_filter(struct reg_filter* p){
   struct reg_edge* v = NULL;
-  printf("------ dump_edge --------\n");
+  printf("------ dump_filter_edge --------\n");
   for(size_t i=0; (v = list_idx(p->edges_list, i)); i++){
     printf("[%c - %c] ", v->range.begin, v->range.end);
   }
-  printf("\n");
+  printf("\n");  
 }
 
 void dump_frame(struct reg_state* p){

@@ -85,7 +85,7 @@ void* reg_realloc(void* p, size_t size, char* file, int line){
 void reg_free(void* p){
   assert(p);
   int idx = _head(p);
-  assert(idx>=0 && idx<MEM_LAST_FREE);
+  assert(idx>=0 && idx<MAX_MAM_COUNT);
   MEM_LAST_FREE = idx;
   mem_size_buf[idx].size = 0;
 }

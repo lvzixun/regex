@@ -1,6 +1,10 @@
+#ifndef _REG_MALLOC_H_
+#define _REG_MALLOC_H_
+
 #include <stdlib.h>
 #include <assert.h>
 
+typedef unsigned char byte;
 
 void reg_painc(const char* str);
 void reg_error(const char* format, ...);
@@ -25,4 +29,6 @@ void reg_error(const char* format, ...);
 
   #undef free
   #define free reg_free
+#endif
+  
 #endif

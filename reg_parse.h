@@ -1,3 +1,6 @@
+#ifndef _REG_PARSE_H_
+#define _REG_PARSE_H_
+
 #include <stdlib.h>
 struct reg_parse;
 
@@ -12,13 +15,15 @@ enum reg_op {
   op_count
 };
 
+struct reg_range {
+  int begin;
+  int end;
+};
+
 struct reg_ast_node {
   enum reg_op op;
   union {
-    struct {
-      int begin;
-      int end;      
-    }range;   // range value
+    struct reg_range range;
   }value;
 
   struct reg_ast_node* childs[2];
@@ -34,3 +39,5 @@ struct reg_ast_node* parse_exec(struct reg_parse* p, const unsigned char* str, s
 
 // for test
 void parse_dump(struct reg_ast_node* root);
+#endif
+
