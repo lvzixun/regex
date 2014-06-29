@@ -1,8 +1,8 @@
 #include <stdio.h>
 
 #include <string.h>
-#include "../reg_parse.h"
-#include "../reg_malloc.h"
+#include "../src/reg_parse.h"
+#include "../src/reg_malloc.h"
 
 
 int main(int argc, char const *argv[]){

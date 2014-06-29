@@ -1,6 +1,6 @@
-#include "../reg_parse.h"
-#include "../reg_state.h"
-#include "../reg_malloc.h"
+#include "../src/reg_parse.h"
+#include "../src/reg_state.h"
+#include "../src/reg_malloc.h"
 
 #include <string.h>
 #include <stdio.h>
