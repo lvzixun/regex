@@ -15,6 +15,7 @@
 struct mem_info {
   char* file;
   int line;
+  void* p;
   size_t size;
 };
 
@@ -24,11 +25,21 @@ static int MEM_LAST_FREE = 0;
 
 void reg_painc(const char* str);
 
+
+
 static inline int _get_idx(){
-  if(MEM_LAST_FREE >= MAX_MAM_COUNT){
+  if(mem_size_buf[MEM_LAST_FREE].size){
     reg_painc("overfllow memory.");
   }
-  return MEM_LAST_FREE++;
+  int ret = MEM_LAST_FREE;
+
+  for(int i=MEM_LAST_FREE+1; i<MAX_MAM_COUNT; i++){
+    if(mem_size_buf[i].size == 0){
+      MEM_LAST_FREE = i;
+      break;
+    }
+  }
+  return ret;
 }
 
 static void _error(){
@@ -57,9 +68,11 @@ void reg_painc(const char* str){
 void* reg_malloc(size_t size, char* file, int line){
   int* ret = malloc(size + HEAD_SIZE);
   *ret = _get_idx();
+  assert(mem_size_buf[*ret].size == 0);
   mem_size_buf[*ret].size = size;
   mem_size_buf[*ret].file = file;
   mem_size_buf[*ret].line = line;
+  mem_size_buf[*ret].p = ret+1;
 
   return (void*)(ret+1);
 }
@@ -77,17 +90,28 @@ void* reg_realloc(void* p, size_t size, char* file, int line){
   assert(mem_size_buf[idx].size > 0);
 
   int* ret = realloc(_point(p), size+HEAD_SIZE);
-  _set_head(ret, size);
+  mem_size_buf[idx].size = size;
+  mem_size_buf[idx].line = line;
+  mem_size_buf[idx].file = file;
+  mem_size_buf[idx].p = ret+1;
+  assert(*ret == idx);
+  *ret = idx;
+
+  printf("reg_realloc idx: %d\n", idx);
   return ret+1;
 }
-
 
 void reg_free(void* p){
   assert(p);
   int idx = _head(p);
-  assert(idx>=0 && idx<MAX_MAM_COUNT);
+  assert(idx>=0 && idx<MAX_MAM_COUNT && 
+    mem_size_buf[idx].p == p && 
+    mem_size_buf[idx].size > 0);
+  
+  free(_point(p));
   MEM_LAST_FREE = idx;
   mem_size_buf[idx].size = 0;
+  mem_size_buf[idx].p = NULL;
 }
 
 
@@ -101,16 +125,11 @@ void reg_dump(){
     if(size){
       char* file = mem_size_buf[i].file;
       int line = mem_size_buf[i].line;
-      printf("[memory leakly]: leakly size %zd   @file:  %s:%d\n", size, file, line);  
+      void* point = mem_size_buf[i].p;
+      printf("[memory leakly]: index: %d point: %p leakly size %zd   @file:  %s:%d\n", i, point, size, file, line);  
     }
   }
 }
-
-
-
-
-
-
 
 
 

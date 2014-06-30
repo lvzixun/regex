@@ -49,6 +49,7 @@ struct reg_filter{
   struct reg_state* state;
 
   size_t start_state_pos;
+  size_t end_state_pos;
 
   struct reg_list* state_list; // the struct reg_node object list
   struct reg_list* edges_list; // the struct reg_edge object list
@@ -116,7 +117,7 @@ struct reg_filter* state_new_filter(struct reg_state* p, struct reg_ast_node* as
 
   // prepare state map
   list_clear(filter->state_list);
-  filter->start_state_pos = _gen_nfa(filter, ast);
+  filter->end_state_pos = _gen_nfa(filter, ast);
    _gen_dfa(filter, filter->start_state_pos);
   return filter;
 }
@@ -289,6 +290,8 @@ static inline int _node_insert(struct reg_filter* filter, size_t node_pos, struc
 
   struct reg_edge* edge = NULL;
   for(size_t i = 0; (edge = list_idx(filter->edges_list, i)); i++){
+    if(count>0 && range->begin > edge->range.end) break;
+
     if(edge->range.begin >= range->begin && edge->range.end <= range->end){
       path.edge_pos = i + 1;
       path.next_node_pos = dest_pos;
@@ -302,6 +305,7 @@ static inline int _node_insert(struct reg_filter* filter, size_t node_pos, struc
 
 static size_t _gen_nfa(struct reg_filter* filter, struct reg_ast_node* root){
   size_t head = _node_new(filter);
+  filter->start_state_pos = head;
   return _gen_op(filter, root, head);
 }
 
@@ -412,18 +416,23 @@ static inline void _dump_edge(struct reg_list* edges_list){
 }
 
 static inline void _dump_node(struct reg_filter* filter, struct reg_node* node){
-  printf("state<%zd> edges: %zd    ", node->node_pos, list_len(node->edges));
+  printf("state[%zd] edges: %zd    ", node->node_pos, list_len(node->edges));
 
   struct _reg_path* path = NULL;
   for(size_t i=0; (path = list_idx(node->edges, i)); i++){
-    struct reg_edge* edge = list_idx(filter->edges_list, path->edge_pos-1);
-    printf("[%c-%c]->state<%zd>  ", edge->range.begin, edge->range.end, path->next_node_pos);
+    if(path->edge_pos > 0){
+      struct reg_edge* edge = list_idx(filter->edges_list, path->edge_pos-1);
+      printf("[%c-%c]->next_state<%zd>  ", edge->range.begin, edge->range.end, path->next_node_pos);
+    }else{
+      printf("[ε]->next_state<%zd>  ", path->next_node_pos);
+    }
   }
   printf("\n");
 }
 
 static void __dump_state(struct reg_filter* filter){
-  printf("--------------dump state -----------------\n");
+  printf("\n--------------dump state -----------------\n");
+  printf("start state pos: %zd  end state pos: %zd\n\n", filter->start_state_pos, filter->end_state_pos);
   struct reg_node* node = NULL;
   for(size_t i=0; (node = list_idx(filter->state_list, i)); i++){
     _dump_node(filter, node);

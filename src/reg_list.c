@@ -1,4 +1,5 @@
 #include <string.h>
+#include <stdio.h>
 #include "reg_list.h"
 
 struct reg_list {
@@ -33,7 +34,7 @@ void list_clear(struct reg_list* p){
 size_t list_add(struct reg_list* p, void* value){
   if(p->len >= p->size){
     p->size *= 2;
-    p->buf = (byte*)realloc(p->buf, p->size);
+    p->buf = (byte*)realloc(p->buf, p->size*p->block);
   }
 
   byte* dest = &(p->buf[p->len*p->block]);
