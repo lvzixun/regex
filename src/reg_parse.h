@@ -6,11 +6,11 @@ struct reg_parse;
 
 enum reg_op {
   op_nil,    // nil op
+
   op_and,   // and op
   op_or,    // or op
   op_rp,    // repeated op
   op_range, // range op
-
 
   op_count
 };
