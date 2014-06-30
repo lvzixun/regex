@@ -48,6 +48,8 @@ struct reg_state{
 struct reg_filter{
   struct reg_state* state;
 
+  size_t start_state_pos;
+
   struct reg_list* state_list; // the struct reg_node object list
   struct reg_list* edges_list; // the struct reg_edge object list
 };
@@ -91,6 +93,7 @@ static inline struct reg_filter* _new_filter(struct reg_state* state){
 
   ret->state_list = list_new(sizeof(struct reg_node), DEF_NODES);
 
+  ret->start_state_pos = 0;
   return ret;
 }
 
@@ -113,8 +116,8 @@ struct reg_filter* state_new_filter(struct reg_state* p, struct reg_ast_node* as
 
   // prepare state map
   list_clear(filter->state_list);
-  size_t start_state_pos =  _gen_nfa(filter, ast);
-  _gen_dfa(filter, start_state_pos);
+  filter->start_state_pos = _gen_nfa(filter, ast);
+   _gen_dfa(filter, filter->start_state_pos);
   return filter;
 }
 
@@ -398,13 +401,38 @@ static size_t _gen_op_range(struct reg_filter* filter, struct reg_ast_node* root
 
 
 // ------------------------------  for test  ------------------------------
-void dump_filter(struct reg_filter* p){
+
+static inline void _dump_edge(struct reg_list* edges_list){
   struct reg_edge* v = NULL;
   printf("------ dump_filter_edge --------\n");
-  for(size_t i=0; (v = list_idx(p->edges_list, i)); i++){
+  for(size_t i=0; (v = list_idx(edges_list, i)); i++){
     printf("[%c - %c] ", v->range.begin, v->range.end);
   }
   printf("\n");  
+}
+
+static inline void _dump_node(struct reg_filter* filter, struct reg_node* node){
+  printf("state<%zd> edges: %zd    ", node->node_pos, list_len(node->edges));
+
+  struct _reg_path* path = NULL;
+  for(size_t i=0; (path = list_idx(node->edges, i)); i++){
+    struct reg_edge* edge = list_idx(filter->edges_list, path->edge_pos-1);
+    printf("[%c-%c]->state<%zd>  ", edge->range.begin, edge->range.end, path->next_node_pos);
+  }
+  printf("\n");
+}
+
+static void __dump_state(struct reg_filter* filter){
+  printf("--------------dump state -----------------\n");
+  struct reg_node* node = NULL;
+  for(size_t i=0; (node = list_idx(filter->state_list, i)); i++){
+    _dump_node(filter, node);
+  }
+}
+
+void dump_filter(struct reg_filter* p){
+  _dump_edge(p->edges_list);
+  __dump_state(p);
 }
 
 void dump_frame(struct reg_state* p){
