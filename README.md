@@ -47,5 +47,5 @@ pattern1 | pattern2
 
 ## detail
 ```
-  TODO....
+  TODO IT....
 ```
