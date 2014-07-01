@@ -11,6 +11,7 @@ void stream_free(struct reg_stream* p);
 inline unsigned char stream_char(struct reg_stream* p);
 inline int stream_end(struct reg_stream* p);
 inline unsigned char stream_next(struct reg_stream* p);
+inline unsigned char stream_back(struct reg_stream* p);
 inline size_t stream_pos(struct reg_stream* p);
 
 #endif

@@ -2,6 +2,7 @@
 #define _REG_STATE_FILTER_
 
 #include "reg_parse.h"
+
 /*
   the interior private headfile
 */
@@ -11,6 +12,8 @@
 #define DEF_EDGES  128
 #define DEF_NODES  DEF_EDGES*DEF_EDGE
 #define DEF_FRAMES DEF_EDGES*2
+
+struct reg_capture;
 
 struct reg_edge {
   struct reg_range range;
@@ -41,4 +44,7 @@ struct reg_filter{
 };
 
 void state_gen(struct reg_filter* filter, struct reg_ast_node* ast);
+int state_capture(struct reg_filter* filter, const char* s, int len, struct reg_capture* cap);
+
+
 #endif
