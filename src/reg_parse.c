@@ -54,8 +54,8 @@ void parse_free(struct reg_parse* p){
 }
 
 
-struct reg_ast_node* parse_exec(struct reg_parse* p, const unsigned char* str, size_t size){
-  p->stream = stream_new(str, size);
+struct reg_ast_node* parse_exec(struct reg_parse* p, const char* rule, size_t size){
+  p->stream = stream_new((const unsigned char*)rule, size);
   struct reg_ast_node* ret =  _parse_exp(p);
   if(!is_end(p)) unexpect_char(p);
 

@@ -19,7 +19,8 @@ reg_parse.c \
 reg_stream.c \
 reg_list.c \
 reg_state.c \
-_state_gen.c 
+_state_gen.c \
+regex.c 
 REGEX_LIB = $(addprefix src/, $(_REGEX_LIB))
 
 

@@ -7,7 +7,7 @@
 
 int main(int argc, char const *argv[]){
   assert(argc>=2);
-  const unsigned char* rule = (const unsigned char*)argv[1];
+  const char* rule = argv[1];
 
   printf("rule: %s\n", rule);
 

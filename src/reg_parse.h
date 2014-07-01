@@ -34,7 +34,7 @@ struct reg_ast_node {
 struct reg_parse* parse_new();
 void parse_clear(struct reg_parse* p);
 void parse_free(struct reg_parse* p);
-struct reg_ast_node* parse_exec(struct reg_parse* p, const unsigned char* str, size_t size);
+struct reg_ast_node* parse_exec(struct reg_parse* p, const char* rule, size_t size);
 
 
 // for test
