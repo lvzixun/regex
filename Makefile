@@ -20,14 +20,16 @@ reg_stream.c \
 reg_list.c \
 reg_state.c \
 _state_gen.c \
-regex.c 
+regex.c \
+reg_error.c 
 REGEX_LIB = $(addprefix src/, $(_REGEX_LIB))
 
 
 _TEST_CAST = \
 test_parse.c \
 test_edge.c \
-test_list.c
+test_list.c \
+test_error.c 
 TEST_CAST = $(addprefix test/, $(_TEST_CAST))
 
 REGEX_LIB_OBJ = $(foreach s, $(REGEX_LIB), $(basename $(s)).o)

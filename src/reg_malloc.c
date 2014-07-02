@@ -4,6 +4,8 @@
 #include <assert.h>
 #include <stdarg.h>
 
+#include "reg_error.h"
+
 #define HEAD_SIZE  sizeof(int)
 #define MAX_MAM_COUNT 0xffff
 
@@ -23,8 +25,6 @@ struct mem_info {
 static struct mem_info mem_size_buf[MAX_MAM_COUNT];
 static int MEM_LAST_FREE = 0;
 
-void reg_painc(const char* str);
-
 
 
 static inline int _get_idx(){
@@ -41,29 +41,6 @@ static inline int _get_idx(){
   }
   return ret;
 }
-
-static void _error(){
-  exit(0);
-}
-
-void reg_error(const char* format, ...){
-  char buf[0xff] = {0};
-  va_list args;
-
-  va_start(args, format);
-  vsnprintf(buf, sizeof(buf)-1, format, args);
-  printf("%s", buf);
-  va_end(args);
-
-  _error();
-}
-
-
-void reg_painc(const char* str){
-  printf("[painc]: %s\n", str);
-  _error();
-}
-
 
 void* reg_malloc(size_t size, char* file, int line){
   int* ret = malloc(size + HEAD_SIZE);

@@ -6,9 +6,6 @@
 
 typedef unsigned char byte;
 
-void reg_painc(const char* str);
-void reg_error(const char* format, ...);
-
 #define REG_API
 
 #define _DEBUG_

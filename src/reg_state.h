@@ -4,7 +4,7 @@
 struct reg_state;
 struct reg_filter;
 
-struct reg_state* state_new();
+struct reg_state* state_new(struct reg_env* env);
 void state_free(struct reg_state* p);
 void state_clear(struct reg_state* p);
 

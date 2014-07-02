@@ -4,6 +4,8 @@
 #include "reg_stream.h"
 #include "reg_parse.h"
 
+#include "reg_error.h"
+
 
 #define DEF_NDES_SIZE 128
 
@@ -16,13 +18,15 @@
 #define expect_char(p, c)   do{ \
                                 int pos = cur_pos(p); \
                                 if(next_char(p) != (c)) \
-                                  reg_error("expect char: %c at pos: %d\n", (c), pos); \
+                                  reg_error(p->env, "expect char: %c at pos: %d\n", (c), pos); \
                             }while(0)   
 #define unexpect_char(p)    do{ \
-                                reg_error("unexpect char: %c at pos: %d\n", at_char(p), cur_pos(p)); \
+                                reg_error(p->env, "unexpect char: %c at pos: %d\n", at_char(p), cur_pos(p)); \
                             }while(0)
 
 struct reg_parse {
+  struct reg_env* env;
+
   struct reg_stream* stream;
 
   size_t nodes_cap;
@@ -35,8 +39,9 @@ static struct reg_ast_node* _parse_term(struct reg_parse* p);
 static struct reg_ast_node* _parse_factor(struct reg_parse* p);
 static struct reg_ast_node* _parse_repeated(struct reg_parse* p);
 
-struct reg_parse* parse_new(){
+struct reg_parse* parse_new(struct reg_env* env){
   struct reg_parse* ret = calloc(1, sizeof(struct reg_parse));
+  ret->env = env;
   ret->nodes = calloc(1, sizeof(struct reg_ast_node)*DEF_NDES_SIZE);
   ret->nodes_cap =0;
   ret->nodes_size = DEF_NDES_SIZE;
@@ -113,7 +118,7 @@ static struct reg_ast_node* _parse_exp(struct reg_parse* p){
         tmp->childs[0] = root;
         tmp->childs[1] = _parse_term(p);
         if(tmp->childs[0]==NULL || tmp->childs[1]==NULL)
-          reg_error("invalid op '|' at pos: %zd\n", cur_pos(p));
+          reg_error(p->env, "invalid op '|' at pos: %zd\n", cur_pos(p));
         root = tmp;
         }break;
       default:

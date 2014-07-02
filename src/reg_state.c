@@ -19,15 +19,17 @@ struct _range_frame {
 };
 
 struct reg_state{
-
+  struct reg_env* env;
   struct reg_list* frame_list; // the struct _reg_frame object list
 };
 
 static void _gen_frame(struct reg_state* p, struct reg_ast_node* root);
 static void _gen_edge(struct reg_filter* filter);
 
-struct reg_state* state_new(){
+struct reg_state* state_new(struct reg_env* env){
   struct reg_state* ret = malloc(sizeof(struct reg_state));
+
+  ret->env = env;
 
   // init frame
   ret->frame_list = list_new(sizeof(struct _range_frame), DEF_FRAMES);

@@ -2,6 +2,8 @@
 #define _REG_PARSE_H_
 
 #include <stdlib.h>
+
+struct reg_env;
 struct reg_parse;
 
 enum reg_op {
@@ -31,7 +33,7 @@ struct reg_ast_node {
 
 
 
-struct reg_parse* parse_new();
+struct reg_parse* parse_new(struct reg_env* env);
 void parse_clear(struct reg_parse* p);
 void parse_free(struct reg_parse* p);
 struct reg_ast_node* parse_exec(struct reg_parse* p, const char* rule, size_t size);

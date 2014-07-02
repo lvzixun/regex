@@ -1,7 +1,7 @@
 regex
 =====
 
-a simple regular express engine
+a simple regular express engine, Just for fun. ;)
 
 ## pattern
 only support 4 pattern.

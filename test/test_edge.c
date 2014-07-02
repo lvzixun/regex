@@ -14,8 +14,10 @@ int main(int argc, char const *argv[]){
   printf("rule: %s\n", rule);
   printf("source: %s\n", source);
 
-  struct reg_parse* p = parse_new();
-  struct reg_state* s = state_new();
+  struct reg_env* env = reg_open_env();
+
+  struct reg_parse* p = parse_new(env);
+  struct reg_state* s = state_new(env);
 
   struct reg_ast_node* root = parse_exec(p, rule, strlen((const char*)rule));
   parse_dump(root);
@@ -33,6 +35,8 @@ int main(int argc, char const *argv[]){
   state_free_filter(filter);
   parse_free(p);
   state_free(s);
+
+  reg_close_env(env);
 
   reg_dump(); // print memory leakly
   return 0;
