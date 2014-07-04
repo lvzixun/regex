@@ -13,6 +13,8 @@
 #define DEF_NODES  DEF_EDGES*DEF_EDGE
 #define DEF_FRAMES DEF_EDGES*2
 
+#define DEF_SUBSET_COUNT 2
+
 struct reg_capture;
 
 struct reg_edge {
@@ -28,8 +30,10 @@ struct _reg_path {
 //  state node
 struct reg_node {
   size_t node_pos;           // the posation of state_list  
+  int subset_tag; 
 
-  struct reg_list* edges; // the struct reg_path object list
+  struct reg_list* subset;   // the state of subset
+  struct reg_list* edges; // the struct _reg_path object list
 };
 
 
@@ -38,6 +42,9 @@ struct reg_filter{
 
   size_t start_state_pos;
   size_t end_state_pos;
+
+  int closure_tag;
+  struct reg_list* eval_subset;
 
   struct reg_list* state_list; // the struct reg_node object list
   struct reg_list* edges_list; // the struct reg_edge object list

@@ -13,6 +13,9 @@
 
 #include "regex.h"
 
+#define foreach_edge(v, node, filter) struct _reg_path* v = NULL; \
+                                      for(size_t i=0; (v = list_idx(node->edges, i)); i++)
+
 static size_t _gen_nfa(struct reg_filter* filter, struct reg_ast_node* root);
 static size_t _gen_dfa(struct reg_filter* filter, size_t start_state_pos);
 
@@ -26,6 +29,9 @@ static size_t _gen_op_rp(struct reg_filter* filter, struct reg_ast_node* root, s
 static size_t _gen_op_range(struct reg_filter* filter, struct reg_ast_node* root, size_t start_state_pos);
 
 static int _pass_state(struct reg_filter* filter, size_t node_pos, struct reg_stream* source, struct reg_capture* cap);
+
+
+
 
 void state_gen(struct reg_filter* filter, struct reg_ast_node* ast){
   list_clear(filter->state_list);
@@ -44,10 +50,6 @@ static size_t _gen_nfa(struct reg_filter* filter, struct reg_ast_node* root){
   size_t head = _node_new(filter);
   filter->start_state_pos = head;
   return _gen_op(filter, root, head);
-}
-
-static size_t _gen_dfa(struct reg_filter* filter, size_t start_state_pos){
-  return 0;
 }
 
 //------------------------------ check char at edge ------------------------------
@@ -95,11 +97,13 @@ static int _pass_state(struct reg_filter* filter, size_t node_pos, struct reg_st
 }
 
 
-// ------------------------------ generate node ------------------------------
+// ------------------------------ generate nfa node ------------------------------
 static inline size_t _node_new(struct reg_filter* filter){
   size_t len = list_len(filter->state_list);
   struct reg_node v = {
     .node_pos = len+1,
+    .subset_tag = 0,
+    .subset = NULL,
     .edges = list_new(sizeof(struct _reg_path), DEF_EDGE),
   };
   size_t idx = list_add(filter->state_list, &v);
@@ -230,4 +234,135 @@ static size_t _gen_op_range(struct reg_filter* filter, struct reg_ast_node* root
   assert(is_insert);
   return end_pos;
 }
+
+// ------------------------------ nfa subset construction to dfa  ------------------------------
+
+static int _campar(size_t* a, size_t*b){
+  return *a - *b;
+}
+
+static void _sort_subset(struct reg_list* subset){
+  list_sort(subset, (campar)_campar);
+}
+
+
+/*
+  get edsilone - closure (subset)
+  subset is return value.
+*/
+static struct reg_list* _closure(struct reg_filter* filter, struct reg_list* subset){
+  (filter->closure_tag)++;
+
+  size_t* pos = NULL;
+  for(size_t i=0; (pos = list_idx(subset, i)); i++){
+    assert(*pos);
+    struct reg_node* node = _node_pos(filter, *pos);
+    node->subset_tag = filter->closure_tag;
+
+    foreach_edge(v, node, filter){
+      size_t next_node_pos = v->next_node_pos;
+      assert(v->next_node_pos);
+      // is edsilone and not in the subset
+      if(v == 0 && _node_pos(filter, next_node_pos)->subset_tag != filter->closure_tag){ 
+        list_add(subset, &(v->next_node_pos));
+      }
+    }
+  }
+
+  _sort_subset(subset);
+  return subset;
+}
+
+/*
+  move state_pos edge_pos, 
+  the return value is filter->eval_subset
+*/
+static void _move(struct reg_filter* filter, size_t state_pos, size_t edge_pos){
+  assert(state_pos);
+  assert(edge_pos);
+
+  list_clear(filter->eval_subset);
+
+  struct reg_node* node = _node_pos(filter, state_pos);
+  foreach_edge(v, node, filter){
+    if(v->edge_pos == edge_pos){
+      list_add(filter->eval_subset, &(v->next_node_pos));
+    }
+  }
+}
+
+static size_t _nfa_node_new(struct reg_filter* filter){
+  size_t pos = _node_new(filter);
+  struct reg_node* node = _node_pos(filter, pos);
+  assert(node->subset == NULL);
+  node->subset = list_copy(filter->eval_subset);
+  return pos;
+}
+
+static void _nfa_node_insert(struct reg_filter* filter, size_t node_pos, size_t edge_pos, size_t next_node_pos){
+  struct _reg_path path = {
+    .edge_pos = edge_pos,
+    .next_node_pos = next_node_pos,
+  };
+  __node_insert(filter, node_pos, &path);
+}
+
+static int _subset2node(struct reg_filter* filter, size_t begin_pos){
+  struct reg_node* v = NULL;
+  size_t eval_subset_len = list_len(filter->eval_subset);
+  assert(eval_subset_len);
+  assert(begin_pos);
+
+  for(size_t pos = begin_pos; (v = _node_pos(filter, pos)); pos++){
+    assert(v->subset);
+    if(eval_subset_len == list_len(v->subset)){
+      size_t i;
+      for(i=0; i<eval_subset_len; i++){
+        size_t* pos1 = list_idx(filter->eval_subset, i);
+        size_t* pos2 = list_idx(v->subset, i);
+        if(*pos1 != *pos2) break;
+      }
+      if(i == eval_subset_len) return pos; // the subset is exist
+    }
+  }
+  return _nfa_node_new(filter); // return the new node
+}
+
+static size_t _gen_dfa(struct reg_filter* filter, size_t start_state_pos){
+  size_t dfa_begin_idx = list_len(filter->state_list);
+  size_t edges_count = list_len(filter->edges_list);
+
+  // closure(start)
+  list_clear(filter->eval_subset);
+  list_add(filter->eval_subset, &start_state_pos);
+  _closure(filter, filter->eval_subset);
+  assert(list_len(filter->eval_subset));
+  _nfa_node_new(filter);
+
+  size_t begin_pos = dfa_begin_idx + 1;
+  size_t end_pos = begin_pos + 1;
+
+  for(;begin_pos<end_pos;){
+    for(size_t state_pos=begin_pos; state_pos<end_pos; state_pos++){
+      // foreach edges
+      for(size_t edge_pos=1; edge_pos<=edges_count; edge_pos++){
+        // counstruction subset
+        _move(filter, state_pos, edge_pos);
+        _closure(filter, filter->eval_subset);
+
+        // insert subset
+        size_t next_node_pos = _subset2node(filter, begin_pos);
+        _nfa_node_insert(filter, state_pos, edge_pos, next_node_pos);
+      }
+    }
+
+    // next
+    begin_pos = end_pos;
+    end_pos = list_len(filter->state_list)+1;
+  }
+
+  return dfa_begin_idx+1;
+}
+
+
 

@@ -54,7 +54,10 @@ static inline struct reg_filter* _new_filter(struct reg_state* state){
 
   ret->state_list = list_new(sizeof(struct reg_node), DEF_NODES);
 
+  ret->eval_subset = list_new(sizeof(size_t), DEF_SUBSET_COUNT);
+
   ret->start_state_pos = 0;
+  ret->closure_tag = 0;
   return ret;
 }
 
@@ -85,8 +88,13 @@ void state_free_filter(struct reg_filter* filter){
   // free state
   for(int i=0; (node = list_idx(filter->state_list, i)) != NULL; i++){
     list_free(node->edges);
+    if(node->subset)
+      list_free(node->subset);
   }
   list_free(filter->state_list);
+
+  // free subset
+  list_free(filter->eval_subset);
 
   // free edges
   list_free(filter->edges_list);
