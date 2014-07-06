@@ -9,40 +9,28 @@ only support 4 pattern.
 ### `and` pattern
 ```
   pattern1 pattern2
-
-  the nfa map:
-    <start> -- pattern1 --> <s1> -- pattern2 --> <end>
+  matches pattern1 followed by pattern2
 ```
 
 
 ### `or` pattern
 ```
 pattern1 | pattern2
-
-  the nfa map:
-    |----pattern1----> <s1> ---ε-------|
-    |                                  ∨
-  <start> --pattern2--> <s2> ---ε---> <end>
+matches pattern1 or pattern2 (ordered)
 ```
 
 
 ### `repeated` pattern
 ```
   pattern *
-
-  the nfa map:
-    |----------ε---------|
-    ∨                    |
-  <start> --pattern--> <end> 
+  matches at least 0 repetitions of pattern
 ```  
 
 
 ### `range` pattern
 ```
   [a-b]
-  
-  the nfa map:
-  <start> --[a-b]--> <end>
+  matches any characters between a and b (range)
 ```
 
 ## detail
