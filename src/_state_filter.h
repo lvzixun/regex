@@ -30,7 +30,8 @@ struct _reg_path {
 //  state node
 struct reg_node {
   size_t node_pos;           // the posation of state_list  
-  int subset_tag; 
+  int subset_tag;
+  int is_end;                // is end state 
 
   struct reg_list* subset;   // the state of subset
   struct reg_list* edges; // the struct _reg_path object list
@@ -40,8 +41,11 @@ struct reg_node {
 struct reg_filter{
   struct reg_state* state;
 
+  // nfa
   size_t start_state_pos;
-  size_t end_state_pos;
+
+  // dfa 
+  size_t dfa_start_state_pos;
 
   int closure_tag;
   struct reg_list* eval_subset;

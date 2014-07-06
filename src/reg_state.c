@@ -44,7 +44,7 @@ void state_free(struct reg_state* p){
 }
 
 void state_clear(struct reg_state* p){
-
+  list_clear(p->frame_list);
 }
 
 static inline struct reg_filter* _new_filter(struct reg_state* state){
@@ -57,6 +57,8 @@ static inline struct reg_filter* _new_filter(struct reg_state* state){
   ret->eval_subset = list_new(sizeof(size_t), DEF_SUBSET_COUNT);
 
   ret->start_state_pos = 0;
+  ret->dfa_start_state_pos = 0;
+
   ret->closure_tag = 0;
   return ret;
 }
@@ -231,7 +233,7 @@ static inline void _dump_edge(struct reg_list* edges_list){
 }
 
 static inline void _dump_node(struct reg_filter* filter, struct reg_node* node){
-  printf("state[%zd] edges: %zd    ", node->node_pos, list_len(node->edges));
+  printf("state[%zd] end: %d  edges: %zd", node->node_pos, node->is_end, list_len(node->edges));
 
   struct _reg_path* path = NULL;
   for(size_t i=0; (path = list_idx(node->edges, i)); i++){
@@ -247,7 +249,9 @@ static inline void _dump_node(struct reg_filter* filter, struct reg_node* node){
 
 static void __dump_state(struct reg_filter* filter){
   printf("\n--------------dump state -----------------\n");
-  printf("start state pos: %zd  end state pos: %zd\n\n", filter->start_state_pos, filter->end_state_pos);
+  printf("nfa start pos: %zd  nfa end pos: %zd\ndfa start pos: %zd dfa end pos:%zd\n", 
+    filter->start_state_pos, filter->dfa_start_state_pos-1,
+    filter->dfa_start_state_pos, list_len(filter->state_list));
   struct reg_node* node = NULL;
   for(size_t i=0; (node = list_idx(filter->state_list, i)); i++){
     _dump_node(filter, node);
