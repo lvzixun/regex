@@ -47,6 +47,10 @@ struct reg_filter{
   // dfa 
   size_t dfa_start_state_pos;
 
+  // min dfa
+  size_t min_dfa_start_state_pos;
+  int minsubset_max;
+
   int closure_tag;
   struct reg_list* eval_subset;
 

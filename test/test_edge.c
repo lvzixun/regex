@@ -11,6 +11,9 @@ int main(int argc, char const *argv[]){
   const char* rule = argv[1];
   const char* source = argv[2];
 
+  // rule = "(a|a)*";
+  // source = "a";
+
   printf("rule: %s\n", rule);
   printf("source: %s\n", source);
 

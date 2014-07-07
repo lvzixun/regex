@@ -58,6 +58,8 @@ static inline struct reg_filter* _new_filter(struct reg_state* state){
 
   ret->start_state_pos = 0;
   ret->dfa_start_state_pos = 0;
+  ret->min_dfa_start_state_pos = 0;
+  ret->minsubset_max = 0;
 
   ret->closure_tag = 0;
   return ret;

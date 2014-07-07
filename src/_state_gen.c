@@ -13,15 +13,27 @@
 
 #include "regex.h"
 
-#define foreach_edge(v, node, filter) struct _reg_path* v = NULL; \
+struct min_node{
+  size_t state_pos;
+  int subset;
+};
+
+
+#define foreach_edge(v, node) struct _reg_path* v = NULL; \
                                       for(size_t i=0; (v = list_idx(node->edges, i)); i++)
 
 static size_t _gen_nfa(struct reg_filter* filter, struct reg_ast_node* root);
 static size_t _gen_dfa(struct reg_filter* filter, size_t start_state_pos);
+static size_t _gen_min_dfa(struct reg_filter* filter);
 
+static inline size_t _node_pass(struct reg_filter* filter, size_t node_pos, size_t edge_pos);
+static inline void _node_tag(struct reg_filter* filter, size_t node_pos, int tag);
 static inline int _node_insert(struct reg_filter* filter, size_t node_pos, struct reg_range* range, size_t dest_pos);
 static inline struct reg_node* _node_pos(struct reg_filter* filter, size_t pos);
 static inline size_t _node_new(struct reg_filter* filter);
+static int __move(struct reg_filter* filter, struct reg_list* subset, size_t edge_pos, struct reg_list* out_subset);
+
+/*dump op*/
 static size_t _gen_op(struct reg_filter* filter, struct reg_ast_node* root, size_t start_state_pos);
 static size_t _gen_op_and(struct reg_filter* filter, struct reg_ast_node* root, size_t start_state_pos);
 static size_t _gen_op_or(struct reg_filter* filter, struct reg_ast_node* root, size_t start_state_pos);
@@ -29,21 +41,20 @@ static size_t _gen_op_rp(struct reg_filter* filter, struct reg_ast_node* root, s
 static size_t _gen_op_range(struct reg_filter* filter, struct reg_ast_node* root, size_t start_state_pos);
 
 static int _pass_state(struct reg_filter* filter, size_t node_pos, struct reg_stream* source, struct reg_capture* cap);
-
-static int __move(struct reg_filter* filter, struct reg_list* subset, size_t edge_pos, struct reg_list* out_subset);
-
 static void _dump_subset(struct reg_filter* filter);
+static void _dump_minsubset(struct reg_list* minsubset);
 
 
 void state_gen(struct reg_filter* filter, struct reg_ast_node* ast){
   list_clear(filter->state_list);
   filter->start_state_pos = _gen_nfa(filter, ast);
   filter->dfa_start_state_pos = _gen_dfa(filter, filter->start_state_pos);
+  filter->min_dfa_start_state_pos = _gen_min_dfa(filter);
 }
 
 int state_capture(struct reg_filter* filter, const char* s, int len, struct reg_capture* cap){
   struct reg_stream* source = stream_new((const unsigned char*)s, len);
-  int success = _pass_state(filter, filter->dfa_start_state_pos, source, cap);
+  int success = _pass_state(filter, filter->start_state_pos, source, cap);
   stream_free(source);
   return success;
 }
@@ -69,7 +80,7 @@ static int _pass_state(struct reg_filter* filter, size_t node_pos, struct reg_st
     printf("_pass_state: %zd\n", node_pos);
   #endif
 
-  // pass ned state
+  // pass end state
   if(stream_end(source) && _node_pos(filter, node_pos)->is_end){ 
     size_t idx = stream_pos(source);
     cap->offset = idx - cap->head;
@@ -113,6 +124,19 @@ static inline size_t _node_new(struct reg_filter* filter){
   };
   size_t idx = list_add(filter->state_list, &v);
   return idx + 1;
+}
+
+static inline void _node_tag(struct reg_filter* filter, size_t node_pos, int tag){
+  _node_pos(filter, node_pos)->subset_tag = tag;
+}
+
+static inline size_t _node_pass(struct reg_filter* filter, size_t node_pos, size_t edge_pos){
+  struct reg_node* node = _node_pos(filter, node_pos);
+  foreach_edge(v, node){
+    if(v->edge_pos == edge_pos)
+      return v->next_node_pos;
+  }
+  return 0;
 }
 
 static inline struct reg_node* _node_pos(struct reg_filter* filter, size_t pos){
@@ -278,7 +302,9 @@ static void _sort_subset(struct reg_list* subset){
 */
 static int _closure(struct reg_filter* filter, struct reg_list* subset){
   int have_end_state = __move(filter, subset, 0, subset);
-  // printf("--- closure!!!\n");
+  #ifdef _DEBUG_
+    printf("--- closure!!!\n");
+  #endif
   return have_end_state;
 }
 
@@ -299,13 +325,15 @@ static int __move(struct reg_filter* filter, struct reg_list* subset, size_t edg
     if(node->is_end)
       have_end_state = 1;
 
-    foreach_edge(v, node, filter){
+    foreach_edge(v, node){
       size_t next_node_pos = v->next_node_pos;
+      struct reg_node* next_node = _node_pos(filter, next_node_pos);
       assert(v->next_node_pos);
       // is edsilone and not in the out_subset
       if(v->edge_pos == edge_pos && 
-        _node_pos(filter, next_node_pos)->subset_tag != filter->closure_tag){ 
-        list_add(out_subset, &(v->next_node_pos));
+        next_node->subset_tag != filter->closure_tag){ 
+        next_node->subset_tag = filter->closure_tag;
+        list_add(out_subset, &next_node_pos);
       }
     }
   }
@@ -332,7 +360,9 @@ static int _move(struct reg_filter* filter, size_t state_pos, size_t edge_pos){
 
   __move(filter, subset, edge_pos, filter->eval_subset);
   int success = list_len(filter->eval_subset)>0;
-  // printf("---move state pos: %zd edge: %zd success: %d\n", state_pos, edge_pos, success);
+  #ifdef _DEBUG_
+    printf("---move state pos: %zd edge: %zd success: %d\n", state_pos, edge_pos, success);
+  #endif
   return success;
 }
 
@@ -344,6 +374,10 @@ static size_t _nfa_node_new(struct reg_filter* filter){
   return pos;
 }
 
+/*
+  connect node_pos and next_node_pos
+  node_pos --- edge_pos --> next_node_pos
+*/
 static void _nfa_node_insert(struct reg_filter* filter, size_t node_pos, size_t edge_pos, size_t next_node_pos){
   struct _reg_path path = {
     .edge_pos = edge_pos,
@@ -373,6 +407,11 @@ static int _subset2node(struct reg_filter* filter, size_t begin_pos){
   return _nfa_node_new(filter); // return the new node
 }
 
+
+/*
+  counstruction to dfa
+  start_state_pos is nfa  start state postion
+*/
 static size_t _gen_dfa(struct reg_filter* filter, size_t start_state_pos){
   size_t dfa_begin_idx = list_len(filter->state_list);
   size_t edges_count = list_len(filter->edges_list);
@@ -384,6 +423,7 @@ static size_t _gen_dfa(struct reg_filter* filter, size_t start_state_pos){
   have_end_state = _closure(filter, filter->eval_subset);
   assert(list_len(filter->eval_subset));
 
+  // set end state
   size_t pos = _nfa_node_new(filter);
   if(have_end_state){ 
     _node_pos(filter, pos)->is_end = 1;
@@ -404,9 +444,10 @@ static size_t _gen_dfa(struct reg_filter* filter, size_t start_state_pos){
           have_end_state = _closure(filter, filter->eval_subset);
 
           // insert subset
-          size_t next_node_pos = _subset2node(filter, begin_pos);
+          size_t next_node_pos = _subset2node(filter, dfa_begin_idx + 1);
           _nfa_node_insert(filter, state_pos, edge_pos, next_node_pos);
 
+          // set edn state
           if(have_end_state){
             _node_pos(filter, next_node_pos)->is_end = 1;
           }
@@ -422,11 +463,155 @@ static size_t _gen_dfa(struct reg_filter* filter, size_t start_state_pos){
   return dfa_begin_idx+1;
 }
 
+
+
+//------------------------------ minimization dfa ------------------------------
+static int _min_sort(struct min_node* a, struct min_node* b){
+  return a->subset - b->subset;
+}
+
+static void _sort_minsubset(struct reg_list* minsubset, size_t begin_idx, size_t len){
+  list_sort_subset(minsubset, begin_idx, len, (campar)_min_sort);
+}
+
+
+static struct reg_list* _new_minsubset(struct reg_filter* filter){
+  size_t len = list_len(filter->state_list) - filter->dfa_start_state_pos + 1;
+  struct reg_list* minsubset = list_new(sizeof(struct min_node), len);
+
+  // foreach dfa node
+  struct reg_node* v = NULL;
+  for(size_t pos = filter->dfa_start_state_pos; (v = _node_pos(filter, pos)); pos++){
+    struct min_node node = {
+      .state_pos = v->node_pos, 
+      .subset = 0,
+    };
+    if(v->is_end){ // is not accept subset
+      node.subset = 2;
+    }else{ // is accept subset
+      node.subset = 1; 
+    }
+
+    _node_tag(filter, node.state_pos, node.subset);
+    list_add(minsubset, &node);
+  }
+
+  _sort_minsubset(minsubset, 0, list_len(minsubset));
+  return minsubset;
+}
+
+
+static void _free_minsubset(struct reg_filter* filter, struct reg_list* minsubset){
+  list_free(minsubset);
+}
+
+
+static inline int _split(struct reg_filter* filter, struct reg_list* minsubset, size_t begin_idx, size_t len){
+  struct min_node* v = NULL;
+  size_t edge_len = list_len(filter->edges_list);
+  int is_split = 0;
+
+  // foreach all edge
+  for(size_t edge_pos = 1; edge_pos<= edge_len ;edge_pos++){
+    int cur_subset = 0;
+
+    // foreach subset
+    for(size_t i = begin_idx; i<begin_idx+len; i++){
+      v = list_idx(minsubset, i);
+      size_t node_pos = v->state_pos;
+      struct reg_node* cur_node = _node_pos(filter, node_pos);
+      assert(cur_node->subset_tag == v->subset);
+
+      size_t next_node_pos = _node_pass(filter, node_pos, edge_pos);
+      struct reg_node* next_node = _node_pos(filter, next_node_pos);
+
+      if(cur_subset==0){
+        cur_subset = v->subset;
+      }
+
+      if(next_node && len >1 && cur_subset != next_node->subset_tag){
+        is_split = 1;
+        v->subset = filter->minsubset_max;
+        cur_node->subset_tag = v->subset;
+      }
+    }
+
+    if(is_split) goto SPLIT_END;
+  }
+
+SPLIT_END:
+  if(is_split){
+    filter->minsubset_max++;
+    _sort_minsubset(minsubset, begin_idx, len);
+  }
+
+  #ifdef _DEBUG_
+    printf("----split --------\n");
+    _dump_minsubset(minsubset);
+  #endif
+
+  return is_split;
+}
+
+
+static void _min_dfa(struct reg_filter* filter, struct reg_list* minsubset){
+  int is_split = 0;
+  size_t min_len = list_len(minsubset);
+  assert(min_len);
+
+  do{
+    struct min_node* v = NULL;
+    size_t cur_subset = ((struct min_node*)list_idx(minsubset, 0))->subset;
+    size_t subset_len = 0;
+
+    for(size_t i=0; (v = list_idx(minsubset, i)); i++){
+      if(v->subset != cur_subset){
+        is_split = _split(filter, minsubset, i - subset_len, subset_len);
+        cur_subset = v->subset;
+        subset_len = 0;
+      }else{
+        subset_len++;
+      }
+    }
+
+    is_split = _split(filter, minsubset, min_len - subset_len, subset_len);
+
+  }while(is_split);
+}
+
+static size_t _gen_min_dfa(struct reg_filter* filter){
+  struct reg_list* minsubset = _new_minsubset(filter);
+  filter->minsubset_max = 3;
+
+  _min_dfa(filter, minsubset);
+
+  _free_minsubset(filter, minsubset);
+  return 0;
+}
+
+
+
+
+
+
 // for test
+static void _dump_minsubset(struct reg_list* minsubset){
+  printf("------- minsubset --------\n");
+  struct min_node* v = NULL;
+  for(size_t i =0; (v = list_idx(minsubset, i)); i++){
+    printf("state:%zd[%d]   ", v->state_pos, v->subset);
+  }
+  printf("\n");
+}
+
 static void _dump_subset(struct reg_filter* filter){
   size_t* pos = NULL;
   printf("------- dump subset len=%zd -------\n", list_len(filter->eval_subset));
   for(size_t i=0; (pos = list_idx(filter->eval_subset, i)); i++){
+    size_t* nv = list_idx(filter->eval_subset, i+1);
+    if(nv){
+      assert(*nv != *pos);
+    }
     printf("%zd ", *pos);
   }
   printf("\n");

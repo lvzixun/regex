@@ -57,8 +57,15 @@ void* list_idx(struct reg_list* p, size_t pos){
 }
 
 
-void list_sort(struct reg_list* p, campar func){
-  qsort(p->buf, p->len, p->block, func);
+void list_sort(struct reg_list* p, campar sort){
+  qsort(p->buf, p->len, p->block, sort);
+}
+
+
+void list_sort_subset(struct reg_list* p, size_t begin_idx, size_t len, campar sort){
+  void* src  = p->buf + p->block*begin_idx;
+  assert(begin_idx+len <= p->len);
+  qsort(src, len, p->block, sort);
 }
 
 struct reg_list* list_copy(struct reg_list* src){
@@ -68,6 +75,5 @@ struct reg_list* list_copy(struct reg_list* src){
   memcpy(ret->buf, src->buf, src->block*src->len);
   return ret;
 }
-
 
 

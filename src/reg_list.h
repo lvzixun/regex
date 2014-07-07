@@ -13,6 +13,6 @@ struct reg_list* list_copy(struct reg_list* src);
 
 typedef int(*campar)(const void*, const void*);
 void list_sort(struct reg_list* p, campar func);
-
+void list_sort_subset(struct reg_list* p, size_t begin_idx, size_t len, campar sort);
 
 #endif
