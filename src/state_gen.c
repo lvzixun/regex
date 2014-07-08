@@ -54,7 +54,7 @@ void state_gen(struct reg_filter* filter, struct reg_ast_node* ast){
 
 int state_capture(struct reg_filter* filter, const char* s, int len, struct reg_capture* cap){
   struct reg_stream* source = stream_new((const unsigned char*)s, len);
-  int success = _pass_state(filter, filter->start_state_pos, source, cap);
+  int success = _pass_state(filter, filter->min_dfa_start_state_pos, source, cap);
   stream_free(source);
   return success;
 }
@@ -117,6 +117,7 @@ static inline size_t _node_new(struct reg_filter* filter){
   size_t len = list_len(filter->state_list);
   struct reg_node v = {
     .node_pos = len+1,
+    .merge_pos = 0,
     .is_end = 0,
     .subset_tag = 0,
     .subset = NULL,
@@ -579,14 +580,67 @@ static void _min_dfa(struct reg_filter* filter, struct reg_list* minsubset){
   }while(is_split);
 }
 
+/*
+  mark the dfa state
+*/
+static void _mark(struct reg_filter* filter, struct reg_list* minsubset){
+  struct min_node* v = NULL;
+  size_t i=0;
+  size_t j=0;
+
+  for(i=0; (v = list_idx(minsubset, i)); i = j){
+    struct min_node* nv = NULL;
+    size_t merge_pos = 0;
+    for(j=i+1; (nv = list_idx(minsubset, j))&&(v->subset == nv->subset); j++){
+      if(merge_pos == 0)
+        merge_pos = _node_new(filter);
+
+      _node_pos(filter, v->state_pos)->merge_pos = merge_pos;
+
+      struct reg_node* node = _node_pos(filter, nv->state_pos);
+      node->merge_pos = merge_pos;
+
+      if(node->is_end)
+        _node_pos(filter, merge_pos)->is_end = node->is_end;
+    }
+  }
+}
+
+/*
+  merge minsubset at dfa
+*/
+static void _merge(struct reg_filter* filter, struct reg_list* minsubset){
+  struct reg_node* node = NULL;
+  for(size_t pos=filter->dfa_start_state_pos; (node= _node_pos(filter, pos)); pos++){
+    size_t merge_pos = node->merge_pos;
+    foreach_edge(v, node){
+      size_t edge_pos = v->edge_pos;
+      size_t next_node_pos = v->next_node_pos;
+      struct reg_node* next_node = _node_pos(filter, next_node_pos);
+      next_node_pos = (next_node->merge_pos)?(next_node->merge_pos):(next_node_pos);
+      if(merge_pos)
+        _nfa_node_insert(filter, merge_pos, edge_pos, next_node_pos); 
+      else
+        v->next_node_pos = next_node_pos;
+    }
+  }
+}
+
+
 static size_t _gen_min_dfa(struct reg_filter* filter){
   struct reg_list* minsubset = _new_minsubset(filter);
   filter->minsubset_max = 3;
 
   _min_dfa(filter, minsubset);
+  _mark(filter, minsubset);
+  _merge(filter, minsubset);
+
+  struct reg_node* node = _node_pos(filter, filter->dfa_start_state_pos);
+  assert(node->node_pos == filter->dfa_start_state_pos);
+  size_t start_pos = (node->merge_pos)?(node->merge_pos):(node->node_pos);
 
   _free_minsubset(filter, minsubset);
-  return 0;
+  return start_pos;
 }
 
 

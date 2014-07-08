@@ -30,6 +30,9 @@ struct _reg_path {
 //  state node
 struct reg_node {
   size_t node_pos;           // the posation of state_list  
+
+  size_t merge_pos;          // the merge posation
+
   int subset_tag;
   int is_end;                // is end state 
 
