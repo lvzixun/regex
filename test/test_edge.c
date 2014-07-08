@@ -29,10 +29,8 @@ int main(int argc, char const *argv[]){
   dump_frame(s);
   dump_filter(filter);
 
-  struct reg_capture cap = {0};
-  printf("------------ capture --------------\n");
-  int success = reg_get_capture(filter, source, strlen(source), &cap);
-  printf("----------- reg_capture -------------\n");
+  int success = reg_match(filter, source, strlen(source));
+  printf("----------- reg_match -------------\n");
   printf("success: %d\n", success);
 
   state_free_filter(filter);

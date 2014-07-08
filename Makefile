@@ -29,7 +29,8 @@ _TEST_CAST = \
 test_parse.c \
 test_edge.c \
 test_list.c \
-test_error.c 
+test_error.c  \
+test_api.c
 TEST_CAST = $(addprefix test/, $(_TEST_CAST))
 
 REGEX_LIB_OBJ = $(foreach s, $(REGEX_LIB), $(basename $(s)).o)

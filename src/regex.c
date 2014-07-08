@@ -71,8 +71,8 @@ REG_API void reg_free_filter(struct reg_filter* filter){
 }
 
 
-REG_API int reg_get_capture(struct reg_filter* filter, const char* source, int len, struct reg_capture* out_capture){
-  return state_capture(filter, source, len, out_capture);
+REG_API int reg_match(struct reg_filter* filter, const char* source, int len){
+  return state_match(filter, source, len);
 }
 
 

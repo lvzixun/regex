@@ -62,7 +62,7 @@ struct reg_filter{
 };
 
 void state_gen(struct reg_filter* filter, struct reg_ast_node* ast);
-int state_capture(struct reg_filter* filter, const char* s, int len, struct reg_capture* cap);
+int state_match(struct reg_filter* filter, const char* s, int len);
 
 
 #endif

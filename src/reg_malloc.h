@@ -28,6 +28,8 @@ typedef unsigned char byte;
 
   #undef free
   #define free reg_free
+#else
+  #define reg_dump(...) 
 #endif
   
 #endif

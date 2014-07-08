@@ -40,10 +40,12 @@ static size_t _gen_op_or(struct reg_filter* filter, struct reg_ast_node* root, s
 static size_t _gen_op_rp(struct reg_filter* filter, struct reg_ast_node* root, size_t start_state_pos);
 static size_t _gen_op_range(struct reg_filter* filter, struct reg_ast_node* root, size_t start_state_pos);
 
-static int _pass_state(struct reg_filter* filter, size_t node_pos, struct reg_stream* source, struct reg_capture* cap);
+static int _match_state(struct reg_filter* filter, size_t node_pos, struct reg_stream* source);
+
+#ifdef _DEBUG_
 static void _dump_subset(struct reg_filter* filter);
 static void _dump_minsubset(struct reg_list* minsubset);
-
+#endif
 
 void state_gen(struct reg_filter* filter, struct reg_ast_node* ast){
   list_clear(filter->state_list);
@@ -52,9 +54,9 @@ void state_gen(struct reg_filter* filter, struct reg_ast_node* ast){
   filter->min_dfa_start_state_pos = _gen_min_dfa(filter);
 }
 
-int state_capture(struct reg_filter* filter, const char* s, int len, struct reg_capture* cap){
+int state_match(struct reg_filter* filter, const char* s, int len){
   struct reg_stream* source = stream_new((const unsigned char*)s, len);
-  int success = _pass_state(filter, filter->min_dfa_start_state_pos, source, cap);
+  int success = _match_state(filter, filter->min_dfa_start_state_pos, source);
   stream_free(source);
   return success;
 }
@@ -75,15 +77,13 @@ static inline struct reg_edge* _edge_pos(struct reg_filter* filter, size_t pos){
 }
 
 
-static int _pass_state(struct reg_filter* filter, size_t node_pos, struct reg_stream* source, struct reg_capture* cap){
+static int _match_state(struct reg_filter* filter, size_t node_pos, struct reg_stream* source){
   #ifdef _DEBUG_
-    printf("_pass_state: %zd\n", node_pos);
+    printf("_match_state: %zd\n", node_pos);
   #endif
 
   // pass end state
   if(stream_end(source) && _node_pos(filter, node_pos)->is_end){ 
-    size_t idx = stream_pos(source);
-    cap->offset = idx - cap->head;
     return 1;
   }
 
@@ -98,10 +98,10 @@ static int _pass_state(struct reg_filter* filter, size_t node_pos, struct reg_st
 
     int success = 0;
     if(range == NULL){  //edsilone
-      success = _pass_state(filter, next_node_pos, source, cap);
+      success = _match_state(filter, next_node_pos, source);
     }else if(c >= range->begin && c<=range->end){ // range
       stream_next(source);
-      success = _pass_state(filter, next_node_pos, source, cap);
+      success = _match_state(filter, next_node_pos, source);
       stream_back(source);
     }
 
@@ -647,7 +647,7 @@ static size_t _gen_min_dfa(struct reg_filter* filter){
 
 
 
-
+#ifdef _DEBUG_
 // for test
 static void _dump_minsubset(struct reg_list* minsubset){
   printf("------- minsubset --------\n");
@@ -671,4 +671,4 @@ static void _dump_subset(struct reg_filter* filter){
   printf("\n");
 }
 
-
+#endif
