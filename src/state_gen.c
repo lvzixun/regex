@@ -372,11 +372,19 @@ static size_t _nfa_node_new(struct reg_filter* filter){
   connect node_pos and next_node_pos
   node_pos --- edge_pos --> next_node_pos
 */
-static void _nfa_node_insert(struct reg_filter* filter, size_t node_pos, size_t edge_pos, size_t next_node_pos){
+static void _dfa_node_insert(struct reg_filter* filter, size_t node_pos, size_t edge_pos, size_t next_node_pos){
   struct _reg_path path = {
     .edge_pos = edge_pos,
     .next_node_pos = next_node_pos,
   };
+
+  struct reg_node* node = _node_pos(filter, node_pos);
+  foreach_edge(v, node){
+    if(v->edge_pos == path.edge_pos &&
+       v->next_node_pos == path.next_node_pos)
+      return;
+  }
+
   __node_insert(filter, node_pos, &path);
 }
 
@@ -439,7 +447,7 @@ static size_t _gen_dfa(struct reg_filter* filter, size_t start_state_pos){
 
           // insert subset
           size_t next_node_pos = _subset2node(filter, dfa_begin_idx + 1);
-          _nfa_node_insert(filter, state_pos, edge_pos, next_node_pos);
+          _dfa_node_insert(filter, state_pos, edge_pos, next_node_pos);
 
           // set edn state
           if(have_end_state){
@@ -612,7 +620,7 @@ static void _merge(struct reg_filter* filter, struct reg_list* minsubset){
       struct reg_node* next_node = _node_pos(filter, next_node_pos);
       next_node_pos = (next_node->merge_pos)?(next_node->merge_pos):(next_node_pos);
       if(merge_pos)
-        _nfa_node_insert(filter, merge_pos, edge_pos, next_node_pos); 
+        _dfa_node_insert(filter, merge_pos, edge_pos, next_node_pos); 
       else
         v->next_node_pos = next_node_pos;
     }
