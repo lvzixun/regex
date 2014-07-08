@@ -78,10 +78,6 @@ static inline struct reg_edge* _edge_pos(struct reg_filter* filter, size_t pos){
 
 
 static int _match_state(struct reg_filter* filter, size_t node_pos, struct reg_stream* source){
-  #ifdef _DEBUG_
-    printf("_match_state: %zd\n", node_pos);
-  #endif
-
   // pass end state
   if(stream_end(source) && _node_pos(filter, node_pos)->is_end){ 
     return 1;
@@ -303,9 +299,6 @@ static void _sort_subset(struct reg_list* subset){
 */
 static int _closure(struct reg_filter* filter, struct reg_list* subset){
   int have_end_state = __move(filter, subset, 0, subset);
-  #ifdef _DEBUG_
-    printf("--- closure!!!\n");
-  #endif
   return have_end_state;
 }
 
@@ -362,7 +355,7 @@ static int _move(struct reg_filter* filter, size_t state_pos, size_t edge_pos){
   __move(filter, subset, edge_pos, filter->eval_subset);
   int success = list_len(filter->eval_subset)>0;
   #ifdef _DEBUG_
-    printf("---move state pos: %zd edge: %zd success: %d\n", state_pos, edge_pos, success);
+    printf("move state pos: %zd edge: %zd success: %d\n", state_pos, edge_pos, success);
   #endif
   return success;
 }
@@ -547,7 +540,7 @@ SPLIT_END:
   }
 
   #ifdef _DEBUG_
-    printf("----split --------\n");
+    printf("split\n");
     _dump_minsubset(minsubset);
   #endif
 
