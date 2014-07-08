@@ -8,7 +8,7 @@
 #include "reg_malloc.h"
 #include "reg_parse.h"
 #include "reg_list.h"
-#include "_state_filter.h"
+#include "state_filter.h"
 #include "reg_stream.h"
 
 #include "regex.h"

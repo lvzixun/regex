@@ -1,7 +1,7 @@
 #include "reg_malloc.h"
 #include "reg_parse.h"
 #include "reg_state.h"
-#include "_state_filter.h"
+#include "state_filter.h"
 
 #include <string.h>
 #include "reg_error.h"

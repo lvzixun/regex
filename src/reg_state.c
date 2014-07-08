@@ -4,7 +4,7 @@
 #include "reg_malloc.h"
 #include "reg_parse.h"
 #include "reg_list.h"
-#include "_state_filter.h"
+#include "state_filter.h"
 
 
 #define frame_idx(p, idx)       ((struct _range_frame*)list_idx(p->frame_list, idx))
