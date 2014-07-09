@@ -1,7 +1,7 @@
 #include "reg_malloc.h"
 #include "reg_parse.h"
 #include "reg_state.h"
-#include "state_filter.h"
+#include "state_pattern.h"
 
 #include <string.h>
 #include "reg_error.h"
@@ -36,43 +36,43 @@ REG_API void reg_close_env(struct reg_env* env){
   free(env);
 }
 
-struct _filter_arg{
+struct _pattern_arg{
   struct reg_env* env;
   const char* rule;
-  struct reg_filter* filter;
+  struct reg_pattern* pattern;
 };
 
-static void _pgen_filter(struct _filter_arg* argv){
+static void _pgen_pattern(struct _pattern_arg* argv){
   struct reg_ast_node* root = parse_exec(argv->env->parse_p, argv->rule, strlen(argv->rule));
-  argv->filter = state_new_filter(argv->env->state_p, root);
+  argv->pattern = state_new_pattern(argv->env->state_p, root);
 }
 
-REG_API struct reg_filter* reg_new_filter(struct reg_env* env, const char* rule){
+REG_API struct reg_pattern* reg_new_pattern(struct reg_env* env, const char* rule){
   if(rule == NULL || env == NULL) return NULL;
 
   parse_clear(env->parse_p);
   
   // set exception handling
-  struct _filter_arg argv = {
+  struct _pattern_arg argv = {
     .env = env,
     .rule = rule,
-    .filter = NULL,
+    .pattern = NULL,
   };
 
-  if(reg_cpcall(env, (pfunc)_pgen_filter, &argv)){
+  if(reg_cpcall(env, (pfunc)_pgen_pattern, &argv)){
     return NULL;
   }
   
-  return argv.filter;
+  return argv.pattern;
 }
 
-REG_API void reg_free_filter(struct reg_filter* filter){
-  state_free_filter(filter);
+REG_API void reg_free_pattern(struct reg_pattern* pattern){
+  state_free_pattern(pattern);
 }
 
 
-REG_API int reg_match(struct reg_filter* filter, const char* source, int len){
-  return state_match(filter, source, len);
+REG_API int reg_match(struct reg_pattern* pattern, const char* source, int len){
+  return state_match(pattern, source, len);
 }
 
 

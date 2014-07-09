@@ -4,7 +4,7 @@
 #include "reg_malloc.h"
 #include "reg_parse.h"
 #include "reg_list.h"
-#include "state_filter.h"
+#include "state_pattern.h"
 
 
 #define frame_idx(p, idx)       ((struct _range_frame*)list_idx(p->frame_list, idx))
@@ -24,7 +24,7 @@ struct reg_state{
 };
 
 static void _gen_frame(struct reg_state* p, struct reg_ast_node* root);
-static void _gen_edge(struct reg_filter* filter);
+static void _gen_edge(struct reg_pattern* pattern);
 
 struct reg_state* state_new(struct reg_env* env){
   struct reg_state* ret = malloc(sizeof(struct reg_state));
@@ -47,8 +47,8 @@ void state_clear(struct reg_state* p){
   list_clear(p->frame_list);
 }
 
-static inline struct reg_filter* _new_filter(struct reg_state* state){
-  struct reg_filter* ret = malloc(sizeof(struct reg_filter));
+static inline struct reg_pattern* _new_pattern(struct reg_state* state){
+  struct reg_pattern* ret = malloc(sizeof(struct reg_pattern));
   ret->state = state;
   ret->edges_list = list_new(sizeof(struct reg_edge), DEF_EDGES);
 
@@ -70,8 +70,8 @@ static inline int _campar(const struct _range_frame* a, const struct _range_fram
   return a->value[0] - b->value[0];
 }
 
-struct reg_filter* state_new_filter(struct reg_state* p, struct reg_ast_node* ast){
-  struct reg_filter* filter = _new_filter(p);
+struct reg_pattern* state_new_pattern(struct reg_state* p, struct reg_ast_node* ast){
+  struct reg_pattern* pattern = _new_pattern(p);
 
   // prepare frame list
   list_clear(p->frame_list);
@@ -79,30 +79,30 @@ struct reg_filter* state_new_filter(struct reg_state* p, struct reg_ast_node* as
   list_sort(p->frame_list, (campar)_campar);
 
   // prepare edge list
-  list_clear(filter->edges_list);
-  _gen_edge(filter);
+  list_clear(pattern->edges_list);
+  _gen_edge(pattern);
 
   // prepare state map
-  state_gen(filter, ast);
-  return filter;
+  state_gen(pattern, ast);
+  return pattern;
 }
 
-void state_free_filter(struct reg_filter* filter){
+void state_free_pattern(struct reg_pattern* pattern){
   struct reg_node* node = NULL;
   // free state
-  for(int i=0; (node = list_idx(filter->state_list, i)) != NULL; i++){
+  for(int i=0; (node = list_idx(pattern->state_list, i)) != NULL; i++){
     list_free(node->edges);
     if(node->subset)
       list_free(node->subset);
   }
-  list_free(filter->state_list);
+  list_free(pattern->state_list);
 
   // free subset
-  list_free(filter->eval_subset);
+  list_free(pattern->eval_subset);
 
   // free edges
-  list_free(filter->edges_list);
-  free(filter);
+  list_free(pattern->edges_list);
+  free(pattern);
 }
 
 
@@ -136,13 +136,13 @@ static void _gen_frame(struct reg_state* p, struct reg_ast_node* root){
   _gen_frame(p, root->childs[1]);
 }
 
-static inline void _insert_edge(struct reg_filter* filter, int begin, int end){
+static inline void _insert_edge(struct reg_pattern* pattern, int begin, int end){
   struct reg_edge value = {
     .range.begin = begin,
     .range.end = end,
   };
 
-  list_add(filter->edges_list, &value);
+  list_add(pattern->edges_list, &value);
 }
 
 static inline int _need_insert(struct reg_state* p, size_t idx){
@@ -162,12 +162,12 @@ static inline int _need_insert(struct reg_state* p, size_t idx){
   return 0;
 }
 
-static inline int _read_frame(struct reg_filter* filter, size_t idx, 
+static inline int _read_frame(struct reg_pattern* pattern, size_t idx, 
   int* out_range_right, int* out_next_begin){
   
   int count = 0;
   assert(out_range_right);
-  int value = frame_idx(filter->state, idx)->value[0];
+  int value = frame_idx(pattern->state, idx)->value[0];
   
   int is_insert = 0;
   int is_begin = 0, is_end = 0;
@@ -176,7 +176,7 @@ static inline int _read_frame(struct reg_filter* filter, size_t idx,
 
   struct _range_frame* v = NULL;
   for(;  
-      v = frame_idx(filter->state, idx), v && value == v->value[0]; 
+      v = frame_idx(pattern->state, idx), v && value == v->value[0]; 
       idx++, count++){  
 
     // record end node 
@@ -194,7 +194,7 @@ static inline int _read_frame(struct reg_filter* filter, size_t idx,
     // single range
     if((v->value[0] == v->value[1] || (is_begin && is_end)) && !is_insert){
       (*out_next_begin)++;
-      _insert_edge(filter, v->value[0], v->value[0]);
+      _insert_edge(pattern, v->value[0], v->value[0]);
       is_insert = 1;
     }
   }
@@ -202,22 +202,22 @@ static inline int _read_frame(struct reg_filter* filter, size_t idx,
   return count;
 }
 
-static void _gen_edge(struct reg_filter* filter){
+static void _gen_edge(struct reg_pattern* pattern){
   int range_right = 0;
   int head = 0;
-  size_t i = _read_frame(filter, 0, &range_right, &head);
+  size_t i = _read_frame(pattern, 0, &range_right, &head);
 
   struct _range_frame* frame = NULL;
-  for(; (frame = list_idx(filter->state->frame_list, i)); ){
+  for(; (frame = list_idx(pattern->state->frame_list, i)); ){
     int tail = frame->value[0];
-    if(_need_insert(filter->state, i) || frame->type == e_begin){
+    if(_need_insert(pattern->state, i) || frame->type == e_begin){
       tail -= 1;
     }
     if(head <= tail && tail <= range_right){
-      _insert_edge(filter, head, tail);
+      _insert_edge(pattern, head, tail);
     }
 
-    int count = _read_frame(filter, i, &range_right, &head);
+    int count = _read_frame(pattern, i, &range_right, &head);
     if(head == tail) head++;
     i += count;
   }
@@ -227,14 +227,14 @@ static void _gen_edge(struct reg_filter* filter){
 
 static inline void _dump_edge(struct reg_list* edges_list){
   struct reg_edge* v = NULL;
-  printf("------ dump_filter_edge --------\n");
+  printf("------ dump_pattern_edge --------\n");
   for(size_t i=0; (v = list_idx(edges_list, i)); i++){
     printf("[%c - %c] ", v->range.begin, v->range.end);
   }
   printf("\n");  
 }
 
-static inline void _dump_node(struct reg_filter* filter, struct reg_node* node){
+static inline void _dump_node(struct reg_pattern* pattern, struct reg_node* node){
   printf("state[%zd] merge:%zd end: %d  edges: %zd", 
     node->node_pos, node->merge_pos, 
     node->is_end, list_len(node->edges));
@@ -242,7 +242,7 @@ static inline void _dump_node(struct reg_filter* filter, struct reg_node* node){
   struct _reg_path* path = NULL;
   for(size_t i=0; (path = list_idx(node->edges, i)); i++){
     if(path->edge_pos > 0){
-      struct reg_edge* edge = list_idx(filter->edges_list, path->edge_pos-1);
+      struct reg_edge* edge = list_idx(pattern->edges_list, path->edge_pos-1);
       printf("[%c-%c]->next_state<%zd>  ", edge->range.begin, edge->range.end, path->next_node_pos);
     }else{
       printf("[ε]->next_state<%zd>  ", path->next_node_pos);
@@ -251,19 +251,19 @@ static inline void _dump_node(struct reg_filter* filter, struct reg_node* node){
   printf("\n");
 }
 
-static void __dump_state(struct reg_filter* filter){
+static void __dump_state(struct reg_pattern* pattern){
   printf("\n--------------dump state -----------------\n");
   printf("nfa start pos: %zd  nfa end pos: %zd\ndfa start pos: %zd dfa end pos:%zd\nmin dfa start pos: %zd\n", 
-    filter->start_state_pos, filter->dfa_start_state_pos-1,
-    filter->dfa_start_state_pos, list_len(filter->state_list),
-    filter->min_dfa_start_state_pos);
+    pattern->start_state_pos, pattern->dfa_start_state_pos-1,
+    pattern->dfa_start_state_pos, list_len(pattern->state_list),
+    pattern->min_dfa_start_state_pos);
   struct reg_node* node = NULL;
-  for(size_t i=0; (node = list_idx(filter->state_list, i)); i++){
-    _dump_node(filter, node);
+  for(size_t i=0; (node = list_idx(pattern->state_list, i)); i++){
+    _dump_node(pattern, node);
   }
 }
 
-void dump_filter(struct reg_filter* p){
+void dump_pattern(struct reg_pattern* p){
   _dump_edge(p->edges_list);
   __dump_state(p);
 }

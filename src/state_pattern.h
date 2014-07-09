@@ -1,5 +1,5 @@
-#ifndef _REG_STATE_FILTER_
-#define _REG_STATE_FILTER_
+#ifndef _REG_STATE_pattern_
+#define _REG_STATE_pattern_
 
 #include "reg_parse.h"
 
@@ -41,7 +41,7 @@ struct reg_node {
 };
 
 
-struct reg_filter{
+struct reg_pattern{
   struct reg_state* state;
 
   // nfa
@@ -61,8 +61,8 @@ struct reg_filter{
   struct reg_list* edges_list; // the struct reg_edge object list
 };
 
-void state_gen(struct reg_filter* filter, struct reg_ast_node* ast);
-int state_match(struct reg_filter* filter, const char* s, int len);
+void state_gen(struct reg_pattern* pattern, struct reg_ast_node* ast);
+int state_match(struct reg_pattern* pattern, const char* s, int len);
 
 
 #endif

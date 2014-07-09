@@ -19,12 +19,12 @@ Just for fun. ;)
 struct reg_env* reg_open_env();
 void reg_close_env(struct reg_env* env);
 
-// create/free a regex pattern(filter).
-struct reg_filter* reg_new_filter(struct reg_env* env, const char* rule);
-void reg_free_filter(struct reg_filter* filter);
+// create/free a regex pattern.
+struct reg_pattern* reg_new_pattern(struct reg_env* env, const char* rule);
+void reg_free_pattern(struct reg_pattern* pattern);
 
 // match pattern, return a boolean value.
-int reg_match(struct reg_filter* filter, const char* source, int len);
+int reg_match(struct reg_pattern* pattern, const char* source, int len);
 ~~~~
 see `src/regex.h` headfile for detail.
 
@@ -35,10 +35,10 @@ see `src/regex.h` headfile for detail.
   struct reg_env* env = reg_open_env();
   
   // create pattern
-  struct reg_filter* filter = reg_new_filter(env, rule);
+  struct reg_pattern* pattern = reg_new_pattern(env, rule);
 
   // match pattern
-  int success = reg_match(filter, source, strlen(source));
+  int success = reg_match(pattern, source, strlen(source));
 
   // free env
   reg_close_env(env);

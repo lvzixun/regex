@@ -14,8 +14,8 @@ int main(int argc, char const *argv[]){
 
   struct reg_env* env = reg_open_env();
   
-  struct reg_filter* filter = reg_new_filter(env, rule);
-  int success = reg_match(filter, source, strlen(source));
+  struct reg_pattern* pattern = reg_new_pattern(env, rule);
+  int success = reg_match(pattern, source, strlen(source));
   printf("-------------- reslut -----------\n success: %d\n", success);
   reg_close_env(env);
   return 0;

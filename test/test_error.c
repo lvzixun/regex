@@ -12,8 +12,8 @@ int main(int argc, char const *argv[]){
   struct reg_env* env = reg_open_env();
 
 
-  struct reg_filter* _ef = reg_new_filter(env, rule);
-  if(_ef) reg_free_filter(_ef);
+  struct reg_pattern* _ef = reg_new_pattern(env, rule);
+  if(_ef) reg_free_pattern(_ef);
 
 
   reg_close_env(env);
