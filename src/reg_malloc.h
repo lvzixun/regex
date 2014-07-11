@@ -8,7 +8,8 @@ typedef unsigned char byte;
 
 #define REG_API
 
-#define _DEBUG_
+// for debug
+// #define _DEBUG_ 
 
 #ifdef _DEBUG_
   void* reg_malloc(size_t size, char* file, int line);

@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS += -g -Wall
+CFLAGS += -g -O2 -Wall
 AR = ar rcu
 
 UNAME_S := $(shell uname -s)
