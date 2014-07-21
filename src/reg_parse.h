@@ -11,7 +11,11 @@ enum reg_op {
 
   op_and,   // and op
   op_or,    // or op
-  op_rp,    // repeated op
+
+  op_rps,    // match 0 or more times
+  op_rpp,    // match 1 or more times
+  op_rpq,   // match 1 or 0 more time
+
   op_range, // range op
 
   op_count

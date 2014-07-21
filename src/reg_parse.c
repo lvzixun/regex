@@ -150,13 +150,29 @@ static struct reg_ast_node* _parse_term(struct reg_parse* p){
 static struct reg_ast_node* _parse_repeated(struct reg_parse* p){
   struct reg_ast_node* root = _parse_factor(p);
   unsigned char cur_char = at_char(p);
+  enum reg_op op = op_nil;
 
-  if(cur_char == '*'){
-    struct reg_ast_node* tmp = _gen_node(p, op_rp);
-    tmp->childs[0] = root;
-    root = tmp;
-    next_char(p);
+  switch(cur_char){
+    case '*':
+      op = op_rps;
+      break;
+
+    case '?': 
+      op = op_rpq;
+      break;
+
+    case '+':
+      op = op_rpp;
+      break;
+
+    default:
+      return root;
   }
+
+  struct reg_ast_node* tmp = _gen_node(p, op);
+  tmp->childs[0] = root;
+  root = tmp;
+  next_char(p);  
   return root;
 }
 
@@ -207,7 +223,11 @@ static char* op_map[] = {
   "op_nil",
   "op_and",
   "op_or",
-  "op_rp",
+
+  "op_rps",
+  "op_rpp",
+  "op_rpq",
+  
   "op_range"
 };
 

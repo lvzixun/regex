@@ -37,7 +37,11 @@ static int __move(struct reg_pattern* pattern, struct reg_list* subset, size_t e
 static size_t _gen_op(struct reg_pattern* pattern, struct reg_ast_node* root, size_t start_state_pos);
 static size_t _gen_op_and(struct reg_pattern* pattern, struct reg_ast_node* root, size_t start_state_pos);
 static size_t _gen_op_or(struct reg_pattern* pattern, struct reg_ast_node* root, size_t start_state_pos);
-static size_t _gen_op_rp(struct reg_pattern* pattern, struct reg_ast_node* root, size_t start_state_pos);
+
+static size_t _gen_op_rps(struct reg_pattern* pattern, struct reg_ast_node* root, size_t start_state_pos);
+static size_t _gen_op_rpp(struct reg_pattern* pattern, struct reg_ast_node* root, size_t start_state_pos);
+static size_t _gen_op_rpq(struct reg_pattern* pattern, struct reg_ast_node* root, size_t start_state_pos);
+
 static size_t _gen_op_range(struct reg_pattern* pattern, struct reg_ast_node* root, size_t start_state_pos);
 
 static int _match_state(struct reg_pattern* pattern, size_t node_pos, struct reg_stream* source);
@@ -83,10 +87,6 @@ static int _match_state(struct reg_pattern* pattern, size_t node_pos, struct reg
     return 1;
   }
 
-  // backtracking
-  if(stream_end(source))
-    return 0;
-
   // dump edge
   struct reg_list* edges = _node_pos(pattern, node_pos)->edges;
   struct _reg_path* path = NULL;
@@ -100,9 +100,10 @@ static int _match_state(struct reg_pattern* pattern, size_t node_pos, struct reg
     if(range == NULL){  //edsilone
       success = _match_state(pattern, next_node_pos, source);
     }else if(c >= range->begin && c<=range->end){ // range
-      stream_next(source);
-      success = _match_state(pattern, next_node_pos, source);
-      stream_back(source);
+      if(stream_next(source)){
+        success = _match_state(pattern, next_node_pos, source);
+        stream_back(source);
+      }
     }
 
     if(success) return 1; 
@@ -185,8 +186,12 @@ static size_t _gen_op(struct reg_pattern* pattern, struct reg_ast_node* root, si
       return _gen_op_and(pattern, root, start_state_pos);
     case op_or:
       return _gen_op_or(pattern, root, start_state_pos);
-    case op_rp:
-      return _gen_op_rp(pattern, root, start_state_pos);
+    case op_rps:
+      return _gen_op_rps(pattern, root, start_state_pos);
+    case op_rpp:
+      return _gen_op_rpp(pattern, root, start_state_pos);
+    case op_rpq:
+      return _gen_op_rpq(pattern, root, start_state_pos);
     case op_range:
       return _gen_op_range(pattern, root, start_state_pos);
     default:
@@ -253,7 +258,7 @@ static size_t _gen_op_or(struct reg_pattern* pattern, struct reg_ast_node* root,
                   ^            |
                   |-----ε------|
 */
-static size_t _gen_op_rp(struct reg_pattern* pattern, struct reg_ast_node* root, size_t start_state_pos){
+static size_t _gen_op_rps(struct reg_pattern* pattern, struct reg_ast_node* root, size_t start_state_pos){
   size_t s1_pos = _node_new(pattern);
   _node_insert(pattern, start_state_pos, NULL, s1_pos);
 
@@ -265,6 +270,48 @@ static size_t _gen_op_rp(struct reg_pattern* pattern, struct reg_ast_node* root,
   _node_insert(pattern, s2_pos, NULL, end_pos);
   return end_pos;
 }
+
+
+/*
+  nfa state map:
+  rule a+
+    
+  <start> --ε--> <s1> --a--> <s2> --ε--> <end> 
+                  ^            |
+                  |-----ε------|
+*/
+static size_t _gen_op_rpp(struct reg_pattern* pattern, struct reg_ast_node* root, size_t start_state_pos){
+  size_t s1_pos = _node_new(pattern);
+  _node_insert(pattern, start_state_pos, NULL, s1_pos);
+
+  size_t s2_pos = _gen_op(pattern, root->childs[0], s1_pos);
+  _node_insert(pattern, s2_pos, NULL, s1_pos);
+
+  size_t end_pos = _node_new(pattern);
+  _node_insert(pattern, s2_pos, NULL, end_pos);
+  return end_pos;
+}
+
+/*
+  nfa state map:
+  rule a?
+    
+    |------------------ε-------------------|
+    |                                      ∨
+  <start> --ε--> <s1> --a--> <s2> --ε--> <end> 
+*/
+static size_t _gen_op_rpq(struct reg_pattern* pattern, struct reg_ast_node* root, size_t start_state_pos){
+  size_t s1_pos = _node_new(pattern);
+  _node_insert(pattern, start_state_pos, NULL, s1_pos);
+
+  size_t s2_pos = _gen_op(pattern, root->childs[0], s1_pos);
+
+  size_t end_pos = _node_new(pattern);
+  _node_insert(pattern, start_state_pos, NULL, end_pos);
+  _node_insert(pattern, s2_pos, NULL, end_pos);
+  return end_pos;
+}
+
 
 
 /*
@@ -538,6 +585,10 @@ static inline int _split(struct reg_pattern* pattern, struct reg_list* minsubset
       if(next_node && len >1 && cur_subset != next_node->subset_tag){
         is_split = 1;
         v->subset = pattern->minsubset_max;
+        cur_node->subset_tag = v->subset;
+      }else if(!next_node){
+        is_split = 1;
+        v->subset = pattern->minsubset_max++;
         cur_node->subset_tag = v->subset;
       }
     }
