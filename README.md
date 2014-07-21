@@ -12,6 +12,7 @@ Just for fun. ;)
 | <img src="http://i.imgur.com/j2GTlK2.png" height="30" width="60" />   | matches `a` or `b` (ordered) |
 |  `a*`   | matches at least 0 repetitions of `a` |
 |  `[a-b]`| matches any characters between `a` and `b` (range) |
+|  `.`    | matches any characters, range is [0-0xff] |
 
 ## api
 ~~~~.c
