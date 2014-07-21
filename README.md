@@ -11,6 +11,8 @@ Just for fun. ;)
 |  `ab`   | matches `a` followed by `b` |
 | <img src="http://i.imgur.com/j2GTlK2.png" height="30" width="60" />   | matches `a` or `b` (ordered) |
 |  `a*`   | matches at least 0 repetitions of `a` |
+|  `a?`   | matches 0 or 1 repetitions of `a` |
+|  `a+`   | matches 1 or more repetitions of `a` |
 |  `[a-b]`| matches any characters between `a` and `b` (range) |
 |  `.`    | matches any characters, range is [0-0xff] |
 
