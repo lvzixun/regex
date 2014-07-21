@@ -83,6 +83,10 @@ static int _match_state(struct reg_pattern* pattern, size_t node_pos, struct reg
     return 1;
   }
 
+  // backtracking
+  if(stream_end(source))
+    return 0;
+
   // dump edge
   struct reg_list* edges = _node_pos(pattern, node_pos)->edges;
   struct _reg_path* path = NULL;

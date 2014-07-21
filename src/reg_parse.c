@@ -167,6 +167,11 @@ static struct reg_ast_node* _parse_factor(struct reg_parse* p){
 
   unsigned char cur_char = at_char(p);
   switch(cur_char){
+    case '.':{
+        ret = _gen_node(p, op_range, 0, 0xff);
+        expect_char(p, '.');
+      }break;
+
     case '[':{
         expect_char(p, '[');
         int begin = next_char(p);
@@ -175,6 +180,7 @@ static struct reg_ast_node* _parse_factor(struct reg_parse* p){
         expect_char(p, ']');
         ret = _gen_node(p, op_range, begin, end);
       }break;
+
     case '(':
       expect_char(p, '(');
       ret = _parse_exp(p);
@@ -185,6 +191,7 @@ static struct reg_ast_node* _parse_factor(struct reg_parse* p){
     case ')':
     case '|':
       return NULL;
+
     default:
       ret = _gen_node(p, op_range, (int)cur_char, (int)cur_char);
       next_char(p);
