@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS += -g -O2 -Wall
+CFLAGS += -g -O2  -Wall
 AR = ar rcu
 
 UNAME_S := $(shell uname -s)
@@ -20,6 +20,7 @@ reg_stream.c \
 reg_list.c \
 reg_state.c \
 state_gen.c \
+state_match.c \
 regex.c \
 reg_error.c 
 REGEX_LIB = $(addprefix src/, $(_REGEX_LIB))

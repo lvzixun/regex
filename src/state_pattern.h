@@ -37,12 +37,15 @@ struct reg_node {
   int is_end;                // is end state 
 
   struct reg_list* subset;   // the state of subset
-  struct reg_list* edges; // the struct _reg_path object list
+  struct reg_list* edges;    // the struct _reg_path object list
 };
 
 
 struct reg_pattern{
   struct reg_state* state;
+
+  int match_tail; // is match end of lines
+  int match_head; // is match begin of lines
 
   // nfa
   size_t start_state_pos;
@@ -65,4 +68,10 @@ void state_gen(struct reg_pattern* pattern, struct reg_ast_node* ast);
 int state_match(struct reg_pattern* pattern, const char* s, int len);
 
 
+// state op
+inline struct reg_edge* state_edge_pos(struct reg_pattern* pattern, size_t pos);
+inline struct reg_node* state_node_pos(struct reg_pattern* pattern, size_t pos);
+
+
 #endif
+

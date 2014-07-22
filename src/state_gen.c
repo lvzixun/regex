@@ -29,7 +29,6 @@ static size_t _gen_min_dfa(struct reg_pattern* pattern);
 static inline size_t _node_pass(struct reg_pattern* pattern, size_t node_pos, size_t edge_pos);
 static inline void _node_tag(struct reg_pattern* pattern, size_t node_pos, int tag);
 static inline int _node_insert(struct reg_pattern* pattern, size_t node_pos, struct reg_range* range, size_t dest_pos);
-static inline struct reg_node* _node_pos(struct reg_pattern* pattern, size_t pos);
 static inline size_t _node_new(struct reg_pattern* pattern);
 static int __move(struct reg_pattern* pattern, struct reg_list* subset, size_t edge_pos, struct reg_list* out_subset);
 
@@ -44,7 +43,6 @@ static size_t _gen_op_rpq(struct reg_pattern* pattern, struct reg_ast_node* root
 
 static size_t _gen_op_range(struct reg_pattern* pattern, struct reg_ast_node* root, size_t start_state_pos);
 
-static int _match_state(struct reg_pattern* pattern, size_t node_pos, struct reg_stream* source);
 
 #ifdef _DEBUG_
 static void _dump_subset(struct reg_pattern* pattern);
@@ -58,60 +56,20 @@ void state_gen(struct reg_pattern* pattern, struct reg_ast_node* ast){
   pattern->min_dfa_start_state_pos = _gen_min_dfa(pattern);
 }
 
-int state_match(struct reg_pattern* pattern, const char* s, int len){
-  struct reg_stream* source = stream_new((const unsigned char*)s, len);
-  int success = _match_state(pattern, pattern->min_dfa_start_state_pos, source);
-  stream_free(source);
-  return success;
-}
-
 static size_t _gen_nfa(struct reg_pattern* pattern, struct reg_ast_node* root){
   size_t head = _node_new(pattern);
   size_t end = _gen_op(pattern, root, head);
-  struct reg_node* node = _node_pos(pattern, end);
+  struct reg_node* node = state_node_pos(pattern, end);
   node->is_end = 1;
   return head;
 }
 
 //------------------------------ check char at edge ------------------------------
-static inline struct reg_edge* _edge_pos(struct reg_pattern* pattern, size_t pos){
+inline struct reg_edge* state_edge_pos(struct reg_pattern* pattern, size_t pos){
   if(pos == 0) return NULL; // is edsilone edege  
   struct reg_edge* edge = list_idx(pattern->edges_list, pos-1);
   return edge;
 }
-
-
-static int _match_state(struct reg_pattern* pattern, size_t node_pos, struct reg_stream* source){
-  // pass end state
-  if(stream_end(source) && _node_pos(pattern, node_pos)->is_end){ 
-    return 1;
-  }
-
-  // dump edge
-  struct reg_list* edges = _node_pos(pattern, node_pos)->edges;
-  struct _reg_path* path = NULL;
-  unsigned char c = stream_char(source);
-
-  for(size_t i=0; (path = list_idx(edges, i)); i++){
-    struct reg_range* range = &(_edge_pos(pattern, path->edge_pos)->range);
-    size_t next_node_pos = path->next_node_pos;
-
-    int success = 0;
-    if(range == NULL){  //edsilone
-      success = _match_state(pattern, next_node_pos, source);
-    }else if(c >= range->begin && c<=range->end){ // range
-      if(stream_next(source)){
-        success = _match_state(pattern, next_node_pos, source);
-        stream_back(source);
-      }
-    }
-
-    if(success) return 1; 
-  }
-
-  return 0;
-}
-
 
 // ------------------------------ generate nfa node ------------------------------
 static inline size_t _node_new(struct reg_pattern* pattern){
@@ -129,11 +87,11 @@ static inline size_t _node_new(struct reg_pattern* pattern){
 }
 
 static inline void _node_tag(struct reg_pattern* pattern, size_t node_pos, int tag){
-  _node_pos(pattern, node_pos)->subset_tag = tag;
+  state_node_pos(pattern, node_pos)->subset_tag = tag;
 }
 
 static inline size_t _node_pass(struct reg_pattern* pattern, size_t node_pos, size_t edge_pos){
-  struct reg_node* node = _node_pos(pattern, node_pos);
+  struct reg_node* node = state_node_pos(pattern, node_pos);
   foreach_edge(v, node){
     if(v->edge_pos == edge_pos)
       return v->next_node_pos;
@@ -141,14 +99,14 @@ static inline size_t _node_pass(struct reg_pattern* pattern, size_t node_pos, si
   return 0;
 }
 
-static inline struct reg_node* _node_pos(struct reg_pattern* pattern, size_t pos){
+inline struct reg_node* state_node_pos(struct reg_pattern* pattern, size_t pos){
   struct reg_node* ret = list_idx(pattern->state_list, pos -1);
   return ret;
 }
 
 static inline void __node_insert(struct reg_pattern* pattern, size_t node_pos, struct _reg_path* path){
   assert(path);
-  struct reg_node* node = _node_pos(pattern, node_pos);
+  struct reg_node* node = state_node_pos(pattern, node_pos);
   list_add(node->edges, path);
 }
 
@@ -364,7 +322,7 @@ static int __move(struct reg_pattern* pattern, struct reg_list* subset, size_t e
   size_t* pos = NULL;
   for(size_t i=0; (pos = list_idx(subset, i)); i++){
     assert(*pos);
-    struct reg_node* node = _node_pos(pattern, *pos);
+    struct reg_node* node = state_node_pos(pattern, *pos);
     node->subset_tag = pattern->closure_tag;
 
     if(node->is_end)
@@ -372,7 +330,7 @@ static int __move(struct reg_pattern* pattern, struct reg_list* subset, size_t e
 
     foreach_edge(v, node){
       size_t next_node_pos = v->next_node_pos;
-      struct reg_node* next_node = _node_pos(pattern, next_node_pos);
+      struct reg_node* next_node = state_node_pos(pattern, next_node_pos);
       assert(v->next_node_pos);
       // is edsilone and not in the out_subset
       if(v->edge_pos == edge_pos && 
@@ -395,7 +353,7 @@ static int __move(struct reg_pattern* pattern, struct reg_list* subset, size_t e
   the return value is pattern->eval_subset
 */
 static int _move(struct reg_pattern* pattern, size_t state_pos, size_t edge_pos){
-  struct reg_list* subset = _node_pos(pattern, state_pos)->subset;
+  struct reg_list* subset = state_node_pos(pattern, state_pos)->subset;
 
   assert(state_pos);
   assert(edge_pos);
@@ -413,7 +371,7 @@ static int _move(struct reg_pattern* pattern, size_t state_pos, size_t edge_pos)
 
 static size_t _nfa_node_new(struct reg_pattern* pattern){
   size_t pos = _node_new(pattern);
-  struct reg_node* node = _node_pos(pattern, pos);
+  struct reg_node* node = state_node_pos(pattern, pos);
   assert(node->subset == NULL);
   node->subset = list_copy(pattern->eval_subset);
   return pos;
@@ -429,7 +387,7 @@ static void _dfa_node_insert(struct reg_pattern* pattern, size_t node_pos, size_
     .next_node_pos = next_node_pos,
   };
 
-  struct reg_node* node = _node_pos(pattern, node_pos);
+  struct reg_node* node = state_node_pos(pattern, node_pos);
   foreach_edge(v, node){
     if(v->edge_pos == path.edge_pos &&
        v->next_node_pos == path.next_node_pos)
@@ -445,7 +403,7 @@ static int _subset2node(struct reg_pattern* pattern, size_t begin_pos){
   assert(eval_subset_len);
   assert(begin_pos);
 
-  for(size_t pos = begin_pos; (v = _node_pos(pattern, pos)); pos++){
+  for(size_t pos = begin_pos; (v = state_node_pos(pattern, pos)); pos++){
     assert(v->subset);
     if(eval_subset_len == list_len(v->subset)){
       size_t i;
@@ -479,7 +437,7 @@ static size_t _gen_dfa(struct reg_pattern* pattern, size_t start_state_pos){
   // set end state
   size_t pos = _nfa_node_new(pattern);
   if(have_end_state){ 
-    _node_pos(pattern, pos)->is_end = 1;
+    state_node_pos(pattern, pos)->is_end = 1;
   }
 
   size_t begin_pos = dfa_begin_idx + 1;
@@ -502,7 +460,7 @@ static size_t _gen_dfa(struct reg_pattern* pattern, size_t start_state_pos){
 
           // set edn state
           if(have_end_state){
-            _node_pos(pattern, next_node_pos)->is_end = 1;
+            state_node_pos(pattern, next_node_pos)->is_end = 1;
           }
         }
       }
@@ -534,7 +492,7 @@ static struct reg_list* _new_minsubset(struct reg_pattern* pattern){
 
   // foreach dfa node
   struct reg_node* v = NULL;
-  for(size_t pos = pattern->dfa_start_state_pos; (v = _node_pos(pattern, pos)); pos++){
+  for(size_t pos = pattern->dfa_start_state_pos; (v = state_node_pos(pattern, pos)); pos++){
     struct min_node node = {
       .state_pos = v->node_pos, 
       .subset = 0,
@@ -574,11 +532,11 @@ static inline int _split(struct reg_pattern* pattern, struct reg_list* minsubset
     for(size_t i = begin_idx; i<begin_idx+len; i++){
       v = list_idx(minsubset, i);
       size_t node_pos = v->state_pos;
-      struct reg_node* cur_node = _node_pos(pattern, node_pos);
+      struct reg_node* cur_node = state_node_pos(pattern, node_pos);
       assert(cur_node->subset_tag == v->subset);
 
       size_t next_node_pos = _node_pass(pattern, node_pos, edge_pos);
-      struct reg_node* next_node = _node_pos(pattern, next_node_pos);
+      struct reg_node* next_node = state_node_pos(pattern, next_node_pos);
 
       if(cur_subset==0){
         cur_subset = v->subset;
@@ -657,13 +615,13 @@ static void _mark(struct reg_pattern* pattern, struct reg_list* minsubset){
       if(merge_pos == 0)
         merge_pos = _node_new(pattern);
 
-      _node_pos(pattern, v->state_pos)->merge_pos = merge_pos;
+      state_node_pos(pattern, v->state_pos)->merge_pos = merge_pos;
 
-      struct reg_node* node = _node_pos(pattern, nv->state_pos);
+      struct reg_node* node = state_node_pos(pattern, nv->state_pos);
       node->merge_pos = merge_pos;
 
       if(node->is_end)
-        _node_pos(pattern, merge_pos)->is_end = node->is_end;
+        state_node_pos(pattern, merge_pos)->is_end = node->is_end;
     }
   }
 }
@@ -673,12 +631,12 @@ static void _mark(struct reg_pattern* pattern, struct reg_list* minsubset){
 */
 static void _merge(struct reg_pattern* pattern, struct reg_list* minsubset){
   struct reg_node* node = NULL;
-  for(size_t pos=pattern->dfa_start_state_pos; (node= _node_pos(pattern, pos)); pos++){
+  for(size_t pos=pattern->dfa_start_state_pos; (node= state_node_pos(pattern, pos)); pos++){
     size_t merge_pos = node->merge_pos;
     foreach_edge(v, node){
       size_t edge_pos = v->edge_pos;
       size_t next_node_pos = v->next_node_pos;
-      struct reg_node* next_node = _node_pos(pattern, next_node_pos);
+      struct reg_node* next_node = state_node_pos(pattern, next_node_pos);
       next_node_pos = (next_node->merge_pos)?(next_node->merge_pos):(next_node_pos);
       if(merge_pos)
         _dfa_node_insert(pattern, merge_pos, edge_pos, next_node_pos); 
@@ -697,7 +655,7 @@ static size_t _gen_min_dfa(struct reg_pattern* pattern){
   _mark(pattern, minsubset);
   _merge(pattern, minsubset);
 
-  struct reg_node* node = _node_pos(pattern, pattern->dfa_start_state_pos);
+  struct reg_node* node = state_node_pos(pattern, pattern->dfa_start_state_pos);
   assert(node->node_pos == pattern->dfa_start_state_pos);
   size_t start_pos = (node->merge_pos)?(node->merge_pos):(node->node_pos);
 
