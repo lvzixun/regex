@@ -1,7 +1,9 @@
 regex
 =====
 
-a pure C implementation of simple regular express engine.
+a pure C implementation of simple regular express engine. the former is just for yes-or-no matching.
+
+that's all begin from [正则表达式实现](http://airtrack.me/posts/2013/07/05/%E6%AD%A3%E5%88%99%E8%A1%A8%E8%BE%BE%E5%BC%8F%E5%AE%9E%E7%8E%B0%EF%BC%88%E4%B8%80%EF%BC%89)
 
 Just for fun. ;)
 
