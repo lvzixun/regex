@@ -563,6 +563,7 @@ static inline int _split(struct reg_pattern* pattern, struct reg_list* minsubset
   struct min_node* v = NULL;
   size_t edge_len = list_len(pattern->edges_list);
   int is_split = 0;
+  int split_edge_pos = 0;
 
   // foreach all edge
   for(size_t edge_pos = 1; edge_pos<= edge_len ;edge_pos++){
@@ -592,21 +593,25 @@ static inline int _split(struct reg_pattern* pattern, struct reg_list* minsubset
 
     if(split_count > 0 && split_count <len){
       is_split = 1;
+      split_edge_pos = edge_pos;
       break;
     }
     else if(split_count == len)
       pattern->minsubset_max++;
   }
 
+
+  #ifdef _DEBUG_
+    printf("split  %d: success: %d  begin: %zd old_len:%zd\n", split_edge_pos, is_split, begin_idx, len);
+    _dump_minsubset(minsubset);
+    printf("\n");
+  #endif
+
   if(is_split){
     pattern->minsubset_max++;
     _sort_minsubset(minsubset, begin_idx, len);
   }
 
-  #ifdef _DEBUG_
-    printf("split\n");
-    _dump_minsubset(minsubset);
-  #endif
 
   return is_split;
 }
@@ -626,7 +631,7 @@ static void _min_dfa(struct reg_pattern* pattern, struct reg_list* minsubset){
       if(v->subset != cur_subset){
         is_split = _split(pattern, minsubset, i - subset_len, subset_len);
         cur_subset = v->subset;
-        subset_len = 0;
+        subset_len = 1;
       }else{
         subset_len++;
       }
