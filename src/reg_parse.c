@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include <stdarg.h>
 #include "reg_malloc.h"
 #include "reg_stream.h"
@@ -18,13 +19,25 @@
 #define expect_char(p, c)   do{ \
                                 int pos = cur_pos(p); \
                                 if(next_char(p) != (c)) \
-                                  reg_error(p->env, "expect char: %c at pos: %d\n", (c), pos); \
+                                  reg_error(p->env, "expect char '%c' at pos: %d\n", (c), pos); \
                             }while(0)   
 #define unexpect_char(p)    do{ \
-                                reg_error(p->env, "unexpect char: %c at pos: %d\n", at_char(p), cur_pos(p)); \
+                                char s[4] = {0}; \
+                                s[0] = at_char(p); \
+                                if(s[0] == 0) memcpy(s, "EOF", 3); \
+                                reg_error(p->env, "unexpect char '%s' at pos: %d\n", s, cur_pos(p)); \
                             }while(0)
 
+
+#define is_symbol(p, c)  (!(p->cmask[c]))
+static char _escape_char[] = {
+  ' ', '\n', '\r', '(',')', 
+  '[', ']', '|', '*', '.', 
+  '\\', '+', '.', '\t', '-'
+};
+
 struct reg_parse {
+  char  cmask[0xff];
   struct reg_env* env;
 
   struct reg_stream* stream;
@@ -34,6 +47,7 @@ struct reg_parse {
   struct reg_ast_node* nodes;
 };
 
+static inline int _escape(struct reg_parse* p);
 static struct reg_ast_node* _parse_exp(struct reg_parse* p);
 static struct reg_ast_node* _parse_term(struct reg_parse* p);
 static struct reg_ast_node* _parse_factor(struct reg_parse* p);
@@ -45,6 +59,14 @@ struct reg_parse* parse_new(struct reg_env* env){
   ret->nodes = calloc(1, sizeof(struct reg_ast_node)*DEF_NDES_SIZE);
   ret->nodes_cap =0;
   ret->nodes_size = DEF_NDES_SIZE;
+
+  memset(ret->cmask, 0, sizeof(ret->cmask));
+  for(int i=0; i<sizeof(_escape_char); i++){
+    int c = _escape_char[i];
+    assert(c>0 && c<0xff);
+    ret->cmask[c] = 1;
+  }
+
   return ret;
 }
 
@@ -203,12 +225,17 @@ static struct reg_ast_node* _parse_factor(struct reg_parse* p){
       expect_char(p, ')');
       break;
 
-    case ']':
-    case ')':
-    case '|':
-      return NULL;
+    // escape char
+    case '\\':{
+      int escape_char = _escape(p);
+      next_char(p);
+      ret = _gen_node(p, op_range, escape_char, escape_char);
+      }break;
 
     default:
+      if(!is_symbol(p, cur_char))
+        unexpect_char(p);
+
       ret = _gen_node(p, op_range, (int)cur_char, (int)cur_char);
       next_char(p);
       break;
@@ -217,6 +244,29 @@ static struct reg_ast_node* _parse_factor(struct reg_parse* p){
   return ret;
 }
 
+static inline int _escape(struct reg_parse* p){
+  expect_char(p, '\\');
+  int escape_char = at_char(p);
+
+  switch(escape_char){
+    case 's': escape_char = ' '; break;
+    case '\\': escape_char = '\\'; break;
+    case 'r': escape_char = '\r'; break;
+    case 'n': escape_char = '\n'; break;
+    case 't': escape_char = '\t'; break;
+    case '(': escape_char = '('; break;
+    case ')': escape_char = ')'; break;
+    case '[': escape_char = '['; break;
+    case ']': escape_char = ']'; break;
+    case '|': escape_char = '|'; break;
+    case '-': escape_char = '-'; break;
+    case '.': escape_char = '.'; break;
+    case '+': escape_char = '+'; break;
+
+    default:  unexpect_char(p);
+  }
+  return escape_char;
+}
 
 // for test
 static char* op_map[] = {

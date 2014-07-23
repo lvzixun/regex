@@ -24,7 +24,7 @@ void stream_free(struct reg_stream* p){
 
 
 inline unsigned char stream_char(struct reg_stream* p){
-  return p->buff[p->pos];
+  return (stream_end(p))?('\0'):(p->buff[p->pos]);
 }
 
 inline int stream_end(struct reg_stream* p){
@@ -32,9 +32,7 @@ inline int stream_end(struct reg_stream* p){
 }
 
 inline unsigned char stream_next(struct reg_stream* p){
-  if(stream_end(p)) return '\0';
-
-  return p->buff[(p->pos)++];
+  return (stream_end(p))?('\0'):(p->buff[(p->pos)++]);
 }
 
 inline unsigned char stream_back(struct reg_stream* p){
