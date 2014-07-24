@@ -10,6 +10,7 @@
 #include "reg_list.h"
 #include "state_pattern.h"
 #include "reg_stream.h"
+#include "reg_state.h"
 
 #include "regex.h"
 
@@ -87,10 +88,12 @@ static inline size_t _node_new(struct reg_pattern* pattern){
 }
 
 static inline void _node_tag(struct reg_pattern* pattern, size_t node_pos, int tag){
+  assert(node_pos);
   state_node_pos(pattern, node_pos)->subset_tag = tag;
 }
 
 static inline size_t _node_pass(struct reg_pattern* pattern, size_t node_pos, size_t edge_pos){
+  assert(node_pos);
   struct reg_node* node = state_node_pos(pattern, node_pos);
   foreach_edge(v, node){
     if(v->edge_pos == edge_pos)
@@ -100,12 +103,14 @@ static inline size_t _node_pass(struct reg_pattern* pattern, size_t node_pos, si
 }
 
 inline struct reg_node* state_node_pos(struct reg_pattern* pattern, size_t pos){
+  if(!pos) return NULL;
   struct reg_node* ret = list_idx(pattern->state_list, pos -1);
   return ret;
 }
 
 static inline void __node_insert(struct reg_pattern* pattern, size_t node_pos, struct _reg_path* path){
   assert(path);
+  assert(node_pos);
   struct reg_node* node = state_node_pos(pattern, node_pos);
   list_add(node->edges, path);
 }
@@ -113,6 +118,7 @@ static inline void __node_insert(struct reg_pattern* pattern, size_t node_pos, s
 static inline int _node_insert(struct reg_pattern* pattern, size_t node_pos, struct reg_range* range, size_t dest_pos){
   int count = 0;
   struct _reg_path path = {0};
+  assert(node_pos);
 
   // insert epsilon edge
   if(range ==NULL){
@@ -139,6 +145,7 @@ static inline int _node_insert(struct reg_pattern* pattern, size_t node_pos, str
 
 
 static size_t _gen_op(struct reg_pattern* pattern, struct reg_ast_node* root, size_t start_state_pos){
+  assert(start_state_pos);
   switch(root->op){
     case op_and:
       return _gen_op_and(pattern, root, start_state_pos);
@@ -522,10 +529,12 @@ static inline int _split(struct reg_pattern* pattern, struct reg_list* minsubset
   struct min_node* v = NULL;
   size_t edge_len = list_len(pattern->edges_list);
   int is_split = 0;
-  int split_edge_pos = 0;
+
+  size_t s_min_nodes[len];
 
   #ifdef _DEBUG_
-    printf("_split: begin_idx: %zd len: %zd\n", begin_idx, len);
+    printf("split begin: begin_idx: %zd len: %zd\n", begin_idx, len);
+    _dump_minsubset(minsubset);
   #endif
 
   // foreach all edge
@@ -548,24 +557,26 @@ static inline int _split(struct reg_pattern* pattern, struct reg_list* minsubset
       }
 
       if((!next_node) || (next_node && len >1 && cur_subset != next_node->subset_tag)) {
-        split_count++;
-        v->subset = pattern->minsubset_max;
-        cur_node->subset_tag = v->subset;
+        s_min_nodes[split_count++] = i;
       }
     }
 
     if(split_count > 0 && split_count <len){
       is_split = 1;
-      split_edge_pos = edge_pos;
+      for(int i=0; i<split_count; i++){
+        v = list_idx(minsubset, s_min_nodes[i]);
+        struct reg_node* state_node = state_node_pos(pattern, v->state_pos);
+        v->subset = pattern->minsubset_max;
+        state_node->subset_tag = v->subset;
+      }
+      pattern->minsubset_max++;
       break;
     }
-    else if(split_count == len)
-      pattern->minsubset_max++;
   }
 
 
   #ifdef _DEBUG_
-    printf("split  edge:%d: success: %d  begin: %zd old_len:%zd\n", split_edge_pos, is_split, begin_idx, len);
+    printf("split end:\n");
     _dump_minsubset(minsubset);
     printf("\n");
   #endif
