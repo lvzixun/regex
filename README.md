@@ -43,7 +43,7 @@ the following escaping sequences are supported:
 ## todo list
 
 1. subset DFA
-2. backrefence
+2. backreference
 3. capture
 
 ## api
