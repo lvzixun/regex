@@ -60,6 +60,8 @@ struct reg_pattern{
   int closure_tag;
   struct reg_list* eval_subset;
 
+  int is_match_tail; 
+
   struct reg_list* state_list; // the struct reg_node object list
   struct reg_list* edges_list; // the struct reg_edge object list
 };

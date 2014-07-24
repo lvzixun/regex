@@ -25,9 +25,12 @@ int state_match(struct reg_pattern* pattern, const char* s, int len){
 static int _match_dfa_state(struct reg_pattern* pattern, size_t node_pos, struct reg_stream* source){
   for(;!stream_end(source);){
     // dump edge
-    struct reg_list* edges = state_node_pos(pattern, node_pos)->edges;
+    struct reg_node* node = state_node_pos(pattern, node_pos);
+    struct reg_list* edges = node->edges;
     struct _reg_path* path = NULL;
     unsigned char c = stream_char(source);    
+
+    if(node->is_end && !pattern->is_match_tail) return 1;
 
     for(size_t i=0; (path = list_idx(edges, i)); i++){
       struct reg_range* range = &(state_edge_pos(pattern, path->edge_pos)->range);
@@ -45,7 +48,7 @@ static int _match_dfa_state(struct reg_pattern* pattern, size_t node_pos, struct
   }
 
   // match is end of source
-  return (stream_end(source) && state_node_pos(pattern, node_pos)->is_end);
+  return state_node_pos(pattern, node_pos)->is_end;
 }
 
 

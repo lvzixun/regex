@@ -33,7 +33,7 @@
 static char _escape_char[] = {
   ' ', '\n', '\r', '(',')', 
   '[', ']', '|', '*', '.', 
-  '\\', '+', '.', '\t', '-'
+  '\\', '+', '.', '\t', '-', '$'
 };
 
 struct reg_parse {
@@ -45,6 +45,8 @@ struct reg_parse {
   size_t nodes_cap;
   size_t nodes_size;
   struct reg_ast_node* nodes;
+
+  int is_match_tail; // is matches the end of string
 };
 
 static inline struct reg_ast_node* _escape(struct reg_parse* p);
@@ -59,6 +61,7 @@ struct reg_parse* parse_new(struct reg_env* env){
   ret->nodes = calloc(1, sizeof(struct reg_ast_node)*DEF_NDES_SIZE);
   ret->nodes_cap =0;
   ret->nodes_size = DEF_NDES_SIZE;
+  ret->is_match_tail = 0;
 
   memset(ret->cmask, 0, sizeof(ret->cmask));
   for(int i=0; i<sizeof(_escape_char); i++){
@@ -80,11 +83,14 @@ void parse_free(struct reg_parse* p){
   free(p);
 }
 
+int parse_is_match_tail(struct reg_parse* p){
+  return p->is_match_tail;
+}
 
 struct reg_ast_node* parse_exec(struct reg_parse* p, const char* rule, size_t size){
   p->stream = stream_new((const unsigned char*)rule, size);
   struct reg_ast_node* ret =  _parse_exp(p);
-  if(!is_end(p)) unexpect_char(p);
+  if(!ret || !is_end(p)) unexpect_char(p);
 
   return ret;
 }
@@ -210,6 +216,12 @@ static struct reg_ast_node* _parse_factor(struct reg_parse* p){
       expect_char(p, '.');
     }break;
 
+    case '$':{
+      expect_char(p, '$');
+      if(!is_end(p)) unexpect_char(p);
+      p->is_match_tail = 1;
+    }break;
+
     case '[':{
       expect_char(p, '[');
       int begin = next_char(p);
@@ -289,6 +301,7 @@ static inline struct reg_ast_node* _escape(struct reg_parse* p){
     case ']':
     case '-':
     case '.':
+    case '$':
     case '+':{ 
       ret = _gen_node(p, op_range, cur_char, cur_char);
       next_char(p);

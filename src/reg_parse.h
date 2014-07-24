@@ -41,7 +41,7 @@ struct reg_parse* parse_new(struct reg_env* env);
 void parse_clear(struct reg_parse* p);
 void parse_free(struct reg_parse* p);
 struct reg_ast_node* parse_exec(struct reg_parse* p, const char* rule, size_t size);
-
+int parse_is_match_tail(struct reg_parse* p);
 
 // for test
 void parse_dump(struct reg_ast_node* root);

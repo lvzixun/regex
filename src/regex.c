@@ -44,7 +44,8 @@ struct _pattern_arg{
 
 static void _pgen_pattern(struct _pattern_arg* argv){
   struct reg_ast_node* root = parse_exec(argv->env->parse_p, argv->rule, strlen(argv->rule));
-  argv->pattern = state_new_pattern(argv->env->state_p, root);
+  int is_match_tail = parse_is_match_tail(argv->env->parse_p);
+  argv->pattern = state_new_pattern(argv->env->state_p, root, is_match_tail);
 }
 
 REG_API struct reg_pattern* reg_new_pattern(struct reg_env* env, const char* rule){

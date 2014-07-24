@@ -70,8 +70,11 @@ static inline int _campar(const struct _range_frame* a, const struct _range_fram
   return a->value[0] - b->value[0];
 }
 
-struct reg_pattern* state_new_pattern(struct reg_state* p, struct reg_ast_node* ast){
+struct reg_pattern* state_new_pattern(struct reg_state* p, struct reg_ast_node* ast, int is_match_tail){
   struct reg_pattern* pattern = _new_pattern(p);
+
+  // set is match the end of string
+  pattern->is_match_tail = is_match_tail;
 
   // prepare frame list
   list_clear(p->frame_list);
@@ -167,8 +170,11 @@ static inline int _read_frame(struct reg_pattern* pattern, size_t idx,
   
   int count = 0;
   assert(out_range_right);
-  int value = frame_idx(pattern->state, idx)->value[0];
   
+  struct _range_frame* f = frame_idx(pattern->state, idx);
+  if(!f) return 0;
+
+  int value = f->value[0];
   int is_insert = 0;
   int is_begin = 0, is_end = 0;
 

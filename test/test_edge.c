@@ -25,7 +25,7 @@ int main(int argc, char const *argv[]){
   struct reg_ast_node* root = parse_exec(p, rule, strlen((const char*)rule));
   parse_dump(root);
 
-  struct reg_pattern* pattern = state_new_pattern(s, root);
+  struct reg_pattern* pattern = state_new_pattern(s, root, parse_is_match_tail(p));
   dump_frame(s);
   dump_pattern(pattern);
 
