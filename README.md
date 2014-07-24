@@ -1,7 +1,9 @@
 regex
 =====
 
-a pure C implementation of simple regular express engine. the former is just for yes-or-no matching.
+a pure C implementation of simple regular express engine, using DFA engine.
+the former is just for yes-or-no matching.
+
 
 that's all begin from [正则表达式实现](http://airtrack.me/posts/2013/07/05/%E6%AD%A3%E5%88%99%E8%A1%A8%E8%BE%BE%E5%BC%8F%E5%AE%9E%E7%8E%B0%EF%BC%88%E4%B8%80%EF%BC%89)
 
@@ -15,8 +17,34 @@ Just for fun. ;)
 |  `a*`   | matches at least 0 repetitions of `a` |
 |  `a?`   | matches 0 or 1 repetitions of `a` |
 |  `a+`   | matches 1 or more repetitions of `a` |
+|  `(...)`  | matches whatever regex is inside the parentheses, as a single element|
 |  `[a-b]`| matches any characters between `a` and `b` (range) |
-|  `.`    | matches any characters, range is [0-0xff] |
+|  `.`    | matches any characters, equivalent to the set `[0-0xff]` |
+|   `\d`  | matches any decimal digit, equivalent to the set `[0-9]`|
+|  `\`    | escapes special characters|
+
+the following escaping sequences are supported:
+
+| escapes | describe |
+|:-------:|:--------:|
+|   `\t`  |  tab |
+|   `\n`  | newline |
+|   `\r`  | return |
+|   `\s`  |  space |
+|   `\\`  |  `\`   |
+|   `\(`  |  `(`   |
+|   `\)`  |  `)`   |
+| `\[`    |   `[`  |
+| `\]`    |   `]`  |
+|  `\-`   |   `-`  |
+|  `\.`   |   `.`  |
+|   `\+`  |   `+`  |
+ 
+## todo list
+
+1. subset DFA
+2. backrefence
+3. capture
 
 ## api
 ~~~~.c
