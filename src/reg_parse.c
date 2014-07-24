@@ -47,7 +47,7 @@ struct reg_parse {
   struct reg_ast_node* nodes;
 };
 
-static inline int _escape(struct reg_parse* p);
+static inline struct reg_ast_node* _escape(struct reg_parse* p);
 static struct reg_ast_node* _parse_exp(struct reg_parse* p);
 static struct reg_ast_node* _parse_term(struct reg_parse* p);
 static struct reg_ast_node* _parse_factor(struct reg_parse* p);
@@ -206,18 +206,18 @@ static struct reg_ast_node* _parse_factor(struct reg_parse* p){
   unsigned char cur_char = at_char(p);
   switch(cur_char){
     case '.':{
-        ret = _gen_node(p, op_range, 0, 0xff);
-        expect_char(p, '.');
-      }break;
+      ret = _gen_node(p, op_range, 0, 0xff);
+      expect_char(p, '.');
+    }break;
 
     case '[':{
-        expect_char(p, '[');
-        int begin = next_char(p);
-        expect_char(p, '-');
-        int end   = next_char(p);
-        expect_char(p, ']');
-        ret = _gen_node(p, op_range, begin, end);
-      }break;
+      expect_char(p, '[');
+      int begin = next_char(p);
+      expect_char(p, '-');
+      int end   = next_char(p);
+      expect_char(p, ']');
+      ret = _gen_node(p, op_range, begin, end);
+    }break;
 
     case '(':
       expect_char(p, '(');
@@ -232,10 +232,8 @@ static struct reg_ast_node* _parse_factor(struct reg_parse* p){
 
     // escape char
     case '\\':{
-      int escape_char = _escape(p);
-      next_char(p);
-      ret = _gen_node(p, op_range, escape_char, escape_char);
-      }break;
+      ret = _escape(p);
+    }break;
 
     default:
       if(!is_symbol(p, cur_char))
@@ -249,28 +247,62 @@ static struct reg_ast_node* _parse_factor(struct reg_parse* p){
   return ret;
 }
 
-static inline int _escape(struct reg_parse* p){
+static inline struct reg_ast_node* _escape(struct reg_parse* p){
+  struct reg_ast_node* ret = NULL;
   expect_char(p, '\\');
-  int escape_char = at_char(p);
+  int cur_char = at_char(p);
 
-  switch(escape_char){
-    case 's': escape_char = ' '; break;
-    case '\\': escape_char = '\\'; break;
-    case 'r': escape_char = '\r'; break;
-    case 'n': escape_char = '\n'; break;
-    case 't': escape_char = '\t'; break;
-    case '(': escape_char = '('; break;
-    case ')': escape_char = ')'; break;
-    case '[': escape_char = '['; break;
-    case ']': escape_char = ']'; break;
-    case '|': escape_char = '|'; break;
-    case '-': escape_char = '-'; break;
-    case '.': escape_char = '.'; break;
-    case '+': escape_char = '+'; break;
+  switch(cur_char){
+    case 's':{  
+      int escape_char = ' '; 
+      ret = _gen_node(p, op_range, escape_char, escape_char);
+      next_char(p);
+    }break;
+
+    case '\\':{
+      int escape_char = '\\'; 
+      ret = _gen_node(p, op_range, escape_char, escape_char);
+      next_char(p);
+    }break;
+
+    case 'r':{
+      int escape_char = '\r'; 
+      ret = _gen_node(p, op_range, escape_char, escape_char);
+      next_char(p);
+    }break;
+
+    case 'n':{ 
+      int escape_char = '\n'; 
+      ret = _gen_node(p, op_range, escape_char, escape_char);
+      next_char(p);
+    }break;
+
+    case 't':{
+      int escape_char = '\t'; 
+      ret = _gen_node(p, op_range, escape_char, escape_char);
+      next_char(p);
+    }break;
+
+    case '(':
+    case ')':
+    case '[':
+    case ']':
+    case '-':
+    case '.':
+    case '+':{ 
+      ret = _gen_node(p, op_range, cur_char, cur_char);
+      next_char(p);
+    }break;
+
+    case 'd':{
+      ret = _gen_node(p, op_range, '0', '9');
+      next_char(p);
+    }break;
 
     default:  unexpect_char(p);
   }
-  return escape_char;
+
+  return ret;
 }
 
 // for test
