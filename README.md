@@ -39,6 +39,8 @@ the following escaping sequences are supported:
 |  `\-`   |   `-`  |
 |  `\.`   |   `.`  |
 |   `\+`  |   `+`  |
+
+`^` (matches the start of the string) and `$` (matches the end of the string) is enabled by default.you can add `.*` prefix and suffix to ingore.
  
 ## todo list
 
