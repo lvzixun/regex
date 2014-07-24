@@ -40,6 +40,7 @@ the following escaping sequences are supported:
 |  `\-`   |   `-`  |
 |  `\.`   |   `.`  |
 |   `\+`  |   `+`  |
+|   `\$`  |   `$`  |
 
 `^` (matches the start of the string) is enabled by default.you can add `.*` prefix to ingore.
  
