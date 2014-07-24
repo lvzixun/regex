@@ -225,6 +225,11 @@ static struct reg_ast_node* _parse_factor(struct reg_parse* p){
       expect_char(p, ')');
       break;
 
+    case ')':
+    case ']':
+    case '|':
+      return NULL;
+
     // escape char
     case '\\':{
       int escape_char = _escape(p);
