@@ -40,6 +40,8 @@ static int _match_dfa_state(struct reg_pattern* pattern, size_t node_pos, struct
         break;
       }
     }
+
+    if(!path) return 0;
   }
 
   // match is end of source
