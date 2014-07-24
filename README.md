@@ -12,6 +12,7 @@ Just for fun. ;)
 ## pattern
 | pattern | describe |
 |:-------:|:--------:|
+|   `$`   | matches the end of the string | 
 |  `ab`   | matches `a` followed by `b` |
 | <img src="http://i.imgur.com/j2GTlK2.png" height="30" width="60" />   | matches `a` or `b` (ordered) |
 |  `a*`   | matches at least 0 repetitions of `a` |
@@ -40,7 +41,7 @@ the following escaping sequences are supported:
 |  `\.`   |   `.`  |
 |   `\+`  |   `+`  |
 
-`^` (matches the start of the string) and `$` (matches the end of the string) is enabled by default.you can add `.*` prefix and suffix to ingore.
+`^` (matches the start of the string) is enabled by default.you can add `.*` prefix to ingore.
  
 ## todo list
 
