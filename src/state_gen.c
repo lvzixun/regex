@@ -389,9 +389,10 @@ static void _dfa_node_insert(struct reg_pattern* pattern, size_t node_pos, size_
 
   struct reg_node* node = state_node_pos(pattern, node_pos);
   foreach_edge(v, node){
-    if(v->edge_pos == path.edge_pos &&
-       v->next_node_pos == path.next_node_pos)
+    if(v->edge_pos == path.edge_pos){
+      assert(v->next_node_pos == path.next_node_pos);
       return;
+    }
   }
 
   __node_insert(pattern, node_pos, &path);
@@ -523,6 +524,10 @@ static inline int _split(struct reg_pattern* pattern, struct reg_list* minsubset
   int is_split = 0;
   int split_edge_pos = 0;
 
+  #ifdef _DEBUG_
+    printf("_split: begin_idx: %zd len: %zd\n", begin_idx, len);
+  #endif
+
   // foreach all edge
   for(size_t edge_pos = 1; edge_pos<= edge_len ;edge_pos++){
     int cur_subset = 0;
@@ -560,7 +565,7 @@ static inline int _split(struct reg_pattern* pattern, struct reg_list* minsubset
 
 
   #ifdef _DEBUG_
-    printf("split  %d: success: %d  begin: %zd old_len:%zd\n", split_edge_pos, is_split, begin_idx, len);
+    printf("split  edge:%d: success: %d  begin: %zd old_len:%zd\n", split_edge_pos, is_split, begin_idx, len);
     _dump_minsubset(minsubset);
     printf("\n");
   #endif
@@ -576,18 +581,19 @@ static inline int _split(struct reg_pattern* pattern, struct reg_list* minsubset
 
 
 static void _min_dfa(struct reg_pattern* pattern, struct reg_list* minsubset){
-  int is_split = 0;
+  int split_count = 0;
   size_t min_len = list_len(minsubset);
   assert(min_len);
 
   do{
+    split_count = 0;
     struct min_node* v = NULL;
     size_t cur_subset = ((struct min_node*)list_idx(minsubset, 0))->subset;
     size_t subset_len = 0;
 
     for(size_t i=0; (v = list_idx(minsubset, i)); i++){
       if(v->subset != cur_subset){
-        is_split = _split(pattern, minsubset, i - subset_len, subset_len);
+        split_count += _split(pattern, minsubset, i - subset_len, subset_len);
         cur_subset = v->subset;
         subset_len = 1;
       }else{
@@ -595,9 +601,8 @@ static void _min_dfa(struct reg_pattern* pattern, struct reg_list* minsubset){
       }
     }
 
-    is_split = _split(pattern, minsubset, min_len - subset_len, subset_len);
-
-  }while(is_split);
+    split_count += _split(pattern, minsubset, min_len - subset_len, subset_len);
+  }while(split_count);
 }
 
 /*
