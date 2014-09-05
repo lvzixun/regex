@@ -19,7 +19,7 @@ Just for fun. ;)
 |  `a?`   | matches 0 or 1 repetitions of `a` |
 |  `a+`   | matches 1 or more repetitions of `a` |
 |  `(...)`  | matches whatever regex is inside the parentheses, as a single element|
-|  `[(a-b | a)]`| matches any characters between `a` and `b` or a (range) |
+|  `[a-b]`| matches any characters between `a` and `b` (range) |
 |  `.`    | matches any characters, equivalent to the set `[0-0xff]` |
 |   `\d`  | matches any decimal digit, equivalent to the set `[0-9]`|
 |  `\`    | escapes special characters|
