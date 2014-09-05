@@ -27,6 +27,11 @@ inline unsigned char stream_char(struct reg_stream* p){
   return (stream_end(p))?('\0'):(p->buff[p->pos]);
 }
 
+inline unsigned char stream_look(struct reg_stream* p, size_t idx){
+  if(idx > p->pos) return 0;
+  return p->buff[idx];
+}
+
 inline int stream_end(struct reg_stream* p){
   return p->pos >= p->size;
 }

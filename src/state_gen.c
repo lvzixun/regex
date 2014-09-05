@@ -541,6 +541,7 @@ static inline int _split(struct reg_pattern* pattern, struct reg_list* minsubset
   for(size_t edge_pos = 1; edge_pos<= edge_len ;edge_pos++){
     int cur_subset = 0;
     int split_count = 0;
+    int per_split_subset = -1;
 
     // foreach subset
     for(size_t i = begin_idx; i<begin_idx+len; i++){
@@ -556,7 +557,10 @@ static inline int _split(struct reg_pattern* pattern, struct reg_list* minsubset
         cur_subset = v->subset;
       }
 
+      int cur_splite_subset = (next_node)?(next_node->subset_tag):(0);
       if((!next_node) || (next_node && len >1 && cur_subset != next_node->subset_tag)) {
+        if(per_split_subset < 0) per_split_subset = cur_splite_subset;
+        if(per_split_subset != cur_splite_subset) continue;
         s_min_nodes[split_count++] = i;
       }
     }

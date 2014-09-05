@@ -11,10 +11,16 @@
 #define DEF_NDES_SIZE 128
 
 #define _stream(p)          (p)->stream
+
 #define at_char(p)          stream_char(_stream(p))
+#define ahead_char(p, s)    stream_look(_stream(p), stream_pos(_stream(p))+(s))
+
 #define is_end(p)           stream_end(_stream(p))
 #define next_char(p)        stream_next(_stream(p))
 #define cur_pos(p)          stream_pos(_stream(p))
+
+
+#define swap(a, b)          do{int tmp = a; a=b; b=tmp;}while(0)
 
 #define expect_char(p, c)   do{ \
                                 int pos = cur_pos(p); \
@@ -204,6 +210,66 @@ static struct reg_ast_node* _parse_repeated(struct reg_parse* p){
   return root;
 }
 
+inline static int _range_factor(struct reg_parse* p){
+  int ret = at_char(p);
+
+  printf("_range_factor: %c\n", (char)ret);
+  switch(ret){
+    case '\\':{
+      struct reg_ast_node* ep = _escape(p);
+      assert(ep);
+      assert(ep->op == op_range);
+      if(ep->value.range.begin != ep->value.range.end)
+        reg_error(p->env, "invalid escape char at `[]`.");
+      ret = ep->value.range.begin;
+    }break;
+
+    default:
+      if(!is_symbol(p, ret))
+        unexpect_char(p);
+      next_char(p);
+  }
+
+  return ret;
+}
+
+inline static struct reg_ast_node* _range_term(struct reg_parse* p){
+  struct reg_ast_node* ret = NULL;
+  int begin = _range_factor(p);
+  int end = begin;
+
+  if(at_char(p) == '-'){
+    expect_char(p, '-');
+    end = _range_factor(p);
+  }
+
+  if(end < begin) swap(end, begin);
+  ret = _gen_node(p, op_range, begin, end);
+  return ret;
+}
+
+
+static struct reg_ast_node* _parse_range(struct reg_parse* p){
+  expect_char(p, '[');
+
+  struct reg_ast_node* ret = _range_term(p);
+  unsigned char cur_char = at_char(p);
+  while( cur_char && cur_char != ']' ){
+    struct reg_ast_node* right = _range_term(p);
+    assert(right);
+    assert(ret);
+
+    struct reg_ast_node* node = _gen_node(p, op_or);
+    node->childs[0] = ret;
+    node->childs[1] = right;
+    ret = node;
+    cur_char = at_char(p);
+  }
+
+  expect_char(p, ']');
+  return ret;
+}
+
 
 // parse factors
 static struct reg_ast_node* _parse_factor(struct reg_parse* p){
@@ -223,12 +289,7 @@ static struct reg_ast_node* _parse_factor(struct reg_parse* p){
     }break;
 
     case '[':{
-      expect_char(p, '[');
-      int begin = next_char(p);
-      expect_char(p, '-');
-      int end   = next_char(p);
-      expect_char(p, ']');
-      ret = _gen_node(p, op_range, begin, end);
+      ret = _parse_range(p);
     }break;
 
     case '(':
